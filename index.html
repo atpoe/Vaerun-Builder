@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lost Essence — main builder (skills &amp; effects)</title>
+  <title>Lost Essence — main builder (skills, gear effects, affixes, mob affixes)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -117,6 +117,28 @@
       font-weight: 600;
       margin: 0.35rem 0 0.25rem;
       color: var(--text);
+    }
+    #effect_workspace.gear-effect-mode {
+      border: 1px solid rgba(167, 139, 250, 0.22);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem 1.25rem;
+      background: linear-gradient(165deg, rgba(30, 35, 48, 0.65) 0%, rgba(18, 21, 28, 0.5) 100%);
+    }
+    #effect_workspace.gear-effect-mode .section-hero {
+      color: #e2dcff;
+    }
+    .gear-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.45rem;
+      border-radius: 6px;
+      background: rgba(167, 139, 250, 0.2);
+      color: #d4c4ff;
+      vertical-align: middle;
+      margin-right: 0.35rem;
     }
     .section-anchor { scroll-margin-top: 6rem; }
     h2 { font-size: 0.95rem; margin-top: 1.35rem; color: var(--muted); }
@@ -295,8 +317,9 @@
     <header class="site-header">
       <h1>Lost Essence — main builder</h1>
       <p class="sub">
-        Unified <strong>skill_actions</strong>, <strong>skill_effects</strong>, and <strong>passive / mastery</strong> authoring (replaces separate
+        Unified <strong>skill_actions</strong>, <strong>skill_effects</strong> / <strong>gear_effects</strong>, <strong>passive / mastery</strong>, <strong>gear affixes</strong> (<span class="mono">gear_prefix</span> / <span class="mono">gear_suffix</span>), and <strong>mob_affixes</strong> authoring (replaces separate
         <code>skill-action-editor</code> + <code>skill-action-builder</code> flows). Jump with the nav, use templates and <strong>+ Add effect</strong> rows, merge fields, then preview JSON.
+        <strong>Gear affix</strong> mode matches <span class="mono">GearAffixRegistry</span> JSON (stats, optional <span class="mono">level_bands</span> per item level). <strong>Mob affix</strong> mode writes <span class="mono">data/&lt;ns&gt;/mob_affixes/*.json</span> — optional <span class="mono">mob_skill</span> for periodic <span class="mono">spell</span> casts (same shape as entity <span class="mono">mob_skill</span>). Mobs and summons can also get skills from entity rules / summon stats; stored magic attack scales with <span class="mono">magic_attack_multi</span> on entity tuning JSON.
       </p>
     </header>
     <nav class="builder-nav" aria-label="Jump to section">
@@ -307,41 +330,50 @@
       <a href="#sec-import">Import</a>
       <a href="#sec-costs">Costs</a>
       <a href="#sec-universal">Universal</a>
-      <a href="#sec-cast-timing">Wind-up</a>
       <a href="#sec-skill-type">Skill type</a>
+      <a href="#sec-cast-timing">Wind-up</a>
       <a href="#sec-templates">Templates</a>
       <a href="#sec-triggers">Triggers</a>
       <a href="#sec-effects">Effects</a>
       <a href="#sec-melee">Melee</a>
       <a href="#sec-spell">Spell</a>
+      <a href="#sec-mob-affix">Mob affix</a>
+      <a href="#sec-gear-affix">Gear affix</a>
       <a href="#sec-output">JSON</a>
     </nav>
     <main class="le-main">
   <div class="page-shell">
-  <div class="row section-anchor" id="sec-mode" style="align-items:flex-end;margin-bottom:0.75rem">
+  <div class="row section-anchor" id="sec-mode" style="align-items:flex-end;margin-bottom:0.75rem;flex-wrap:wrap;gap:0.75rem">
     <div>
       <label for="app_tab" style="margin-top:0">Builder mode</label>
       <select id="app_tab" style="margin-top:0.25rem;width:100%;max-width:320px">
         <option value="skill" selected>Skill action JSON</option>
-        <option value="effect">Skill effect JSON</option>
+        <option value="effect">Skill effect JSON (skill_effects/)</option>
+        <option value="gear_effect">Gear effect JSON (gear_effects/)</option>
         <option value="passive_mastery">Skill passive/mastery JSON</option>
+        <option value="mob_affix">Mob affix JSON</option>
+        <option value="gear_affix">Gear affix JSON (prefix/suffix)</option>
       </select>
     </div>
-    <p class="hint" style="margin:0;flex:1">Passive/mastery mode authors <span class="mono">skill_actions</span> with <span class="mono">execution.type: passive</span> (reflect, stat %, gear unlock snippets). Class trees are edited in-game. Cast <span class="mono">cast_particles.shape</span> is supported in-game (circle, square, lines, spin…).</p>
+    <div style="display:flex;flex-direction:column;gap:0.25rem">
+      <label for="global_import_json_btn" style="margin:0">Import JSON</label>
+      <input type="file" id="global_import_json_file" accept=".json,application/json" style="display:none" aria-hidden="true" />
+      <button type="button" class="ghost" id="global_import_json_btn">Choose JSON file…</button>
+    </div>
+    <p class="hint" style="margin:0;flex:1;min-width:min(100%, 14rem)">Loads into the <strong>selected builder mode</strong> above (skill action, skill/gear effect, passive/mastery, mob affix, or gear affix). Same importers as each panel’s import — available here from every tab.</p>
   </div>
 
-  <div id="skill_action_workspace">
+  <div id="skill_action_workspace_top" class="skill-action-builder-chunk">
   <h2 class="section-hero">Skill action builder</h2>
-  <p class="hint">Build a datapack skill JSON for <span class="mono">data/&lt;namespace&gt;/skill_actions/</span> — <strong>buff</strong> self-effects (optional swing + particles), <strong>melee</strong>, or <strong>Geo</strong> spells. Geo damage uses <span class="mono">damage_stat</span> (<strong>Physical attack</strong> or <strong>Magic attack</strong>). Use <strong>Skill passive/mastery JSON</strong> in Builder mode for <span class="mono">execution.type: passive</span> passives.</p>
+  <p class="hint">Build a datapack skill JSON for <span class="mono">data/&lt;namespace&gt;/skill_actions/</span> — <strong>buff</strong> self-effects (optional swing + particles), <strong>melee</strong>, or <strong>Geo</strong> spells. Geo damage uses <span class="mono">damage_stat</span> (<strong>Physical attack</strong> or <strong>Magic attack</strong>). Mobs, summons, and <strong>mob affixes</strong> can reference <span class="mono">spell</span> skills for AI casts (see <strong>Mob affix JSON</strong> mode). Use <strong>Skill passive/mastery JSON</strong> in Builder mode for <span class="mono">execution.type: passive</span> passives. The exported <span class="mono">skill_id</span> here must match <span class="mono">skill_action_id</span> on the corresponding <span class="mono">skill_nodes/*.json</span> row (same string).</p>
 
   <div class="step-guide section-anchor" id="sec-step-guide">
     <h3>Suggested order</h3>
     <ol>
       <li><a href="#sec-simple">Simple mode</a> + <a href="#sec-identity">identity</a> (or import an existing file)</li>
       <li><a href="#sec-costs">Costs &amp; cooldown</a></li>
-      <li><a href="#sec-universal">Universal chain</a> (optional) — compose extras (motion, blink, summon, projectile, …) or use <a href="#sec-melee">Melee extras</a> on melee skills</li>
-      <li><a href="#sec-cast-timing">Cast wind-up</a> (optional; turn off simple mode if this section is hidden)</li>
-      <li><a href="#sec-skill-type">Skill type</a> → <a href="#sec-templates">template</a> → tune <a href="#sec-effects">effects</a> / <a href="#sec-melee">melee</a> / <a href="#sec-spell">spell</a></li>
+      <li><a href="#sec-skill-type">Skill type</a> → read the focus card → optional <a href="#sec-cast-timing">cast wind-up</a> (all types)</li>
+      <li><a href="#sec-templates">Template</a> → tune <a href="#sec-universal">universal</a> / <a href="#sec-melee">melee</a> (incl. extras) / <a href="#sec-effects">effects</a> / <a href="#sec-spell">spell</a></li>
       <li>Optional <a href="#sec-triggers">trigger effects</a> &amp; gear, then <a href="#sec-output">preview &amp; download</a></li>
     </ol>
   </div>
@@ -370,7 +402,8 @@
 
   <div class="simple-advanced">
     <h2 class="section-anchor" id="sec-identity">Skill identity</h2>
-    <label for="skill_id">Skill id <span class="pill">must match your skill node</span></label>
+    <p class="hint" style="margin:0 0 0.45rem">Written as <span class="mono">skill_id</span> in downloaded <span class="mono">skill_actions</span> JSON. The matching tree node uses <span class="mono">skill_action_id</span> with the <strong>same</strong> string (legacy datapacks may still use <span class="mono">skill_id</span> on the node).</p>
+    <label for="skill_id"><span class="mono">skill_id</span> (skill_actions) <span class="pill">pair with skill_nodes.skill_action_id</span></label>
     <input id="skill_id" type="text" class="mono" value="lost_essence:defender/my_custom_skill" placeholder="lost_essence:defender/my_skill" />
     <label for="filename">File name when downloading</label>
     <input id="filename" type="text" value="my_custom_skill.json" />
@@ -401,34 +434,11 @@
     <div></div>
   </div>
 
-  <div id="sec-cast-timing" class="section-anchor simple-advanced">
-  <details id="exec_cast_windup_block" class="spell-section" style="margin-top:0.75rem">
-    <summary>Cast wind-up (melee &amp; spells only)</summary>
-    <p class="hint">Delays the real skill (buff steps, melee cone, spell spawn) until the wind-up ends. Uses <strong>Cast presentation</strong> (effect panel) or <strong>spell cast sound / Player Animator</strong> for the first pulse. Set <span class="mono">cast_repeat_interval_seconds</span> to replay Player Animator + cast sound during a long channel. <span class="mono">cast_lock_movement</span> (default on) keeps you rooted server-side.</p>
-    <div class="row">
-      <div>
-        <label for="exec_casting_time">casting_time_seconds</label>
-        <input id="exec_casting_time" type="number" value="0" min="0" step="0.05" />
-      </div>
-      <div>
-        <label for="exec_cast_repeat_interval">cast_repeat_interval_seconds</label>
-        <input id="exec_cast_repeat_interval" type="number" value="0" min="0" step="0.05" />
-      </div>
-    </div>
-    <div class="row">
-      <label class="field-full"><input type="checkbox" id="exec_cast_lock_movement" checked /> cast_lock_movement</label>
-    </div>
-    <div class="row">
-      <label class="field-full"><input type="checkbox" id="exec_cast_repeat_particles" /> cast_repeat_particles (repeat cast particles each pulse)</label>
-    </div>
-  </details>
-  </div>
-
   <h2 class="section-anchor" id="sec-skill-type">Skill type</h2>
   <div class="quick-start">
     <strong>Quick start</strong>
     <ol>
-      <li>Follow the <a href="#sec-step-guide">Suggested order</a> above (costs → universal / melee extras if needed → wind-up → this section).</li>
+      <li>Follow the <a href="#sec-step-guide">Suggested order</a> above (costs → pick skill type below → cast wind-up if needed → tune the focused panel).</li>
       <li>Pick <strong>Skill type</strong> below, then tick what the skill does (ground: damage vs support).</li>
       <li>Use a <strong>template</strong> + <strong>Apply selected template</strong> for a working starting point.</li>
       <li>Scroll to <strong>Effects</strong> / <strong>Melee</strong> / <strong>Spell</strong> and tune numbers, then <strong>Preview skill JSON</strong>.</li>
@@ -480,21 +490,44 @@
     </div>
   </div>
 
+  <div id="sec-cast-timing" class="section-anchor">
+  <details id="exec_cast_windup_block" class="spell-section" style="margin-top:0.75rem" open>
+    <summary>Cast wind-up (all skill types)</summary>
+    <p class="hint">Delays the real skill (buff steps, melee cone, spell spawn, universal compile) until the wind-up ends. Pair with <strong>Cast look</strong> on buffs / spells, a <strong>Cast presentation</strong> universal stage, or spell cast sound / Player Animator. Set <span class="mono">cast_repeat_interval_seconds</span> to replay Player Animator + cast sound during a long channel. <span class="mono">cast_lock_movement</span> (default on) keeps you rooted server-side.</p>
+    <div class="row">
+      <div>
+        <label for="exec_casting_time">casting_time_seconds</label>
+        <input id="exec_casting_time" type="number" value="0" min="0" step="0.05" />
+      </div>
+      <div>
+        <label for="exec_cast_repeat_interval">cast_repeat_interval_seconds</label>
+        <input id="exec_cast_repeat_interval" type="number" value="0" min="0" step="0.05" />
+      </div>
+    </div>
+    <div class="row">
+      <label class="field-full"><input type="checkbox" id="exec_cast_lock_movement" checked /> cast_lock_movement</label>
+    </div>
+    <div class="row">
+      <label class="field-full"><input type="checkbox" id="exec_cast_repeat_particles" /> cast_repeat_particles (repeat cast particles each pulse)</label>
+    </div>
+  </details>
+  </div>
+
   <div id="panel_universal" class="hidden">
     <h2 class="section-anchor" id="sec-universal">Universal stage chain</h2>
-    <p class="hint">Create ordered stages. Compiler uses <strong>last-write wins</strong> when two stages target the same runtime key; warnings appear below.</p>
+    <p class="hint">Create ordered stages. Use <strong>Remove stage</strong> on a card or <strong>Clear all stages</strong> to reset. Compiler uses <strong>last-write wins</strong> when two stages target the same runtime key; warnings appear below. <strong>Summon</strong> stages include <span class="mono">y_offset</span> on the card; <span class="mono">summon_stats</span> and optional nested summon <span class="mono">mob_skill</span> appear in the section below (open by default — collapse the summary if you want it out of the way).</p>
     <div class="row">
       <div>
         <label for="uv_preset_pick">Universal preset</label>
         <select id="uv_preset_pick">
           <option value="">— choose universal preset —</option>
-          <option value="rush">Rush-like (melee + forward motion + trigger)</option>
+          <option value="rush">Rush-like (melee + look-motion + trigger)</option>
           <option value="melee_projectile_combo">Melee into projectile</option>
           <option value="summoner_volley">Summoner volley (summon + projectile)</option>
           <option value="teleport_strike">Teleport strike (blink + melee + taunt)</option>
           <option value="flicker_strike">Flicker strike (blink + melee, no taunt)</option>
           <option value="fan_volley">Fan volley (staggered projectiles)</option>
-          <option value="backflip_evade">Backflip (backward motion + sweep VFX)</option>
+          <option value="backflip_evade">Backflip (move caster back + sweep VFX)</option>
         </select>
       </div>
       <div style="align-self:end">
@@ -504,6 +537,7 @@
     <div id="uv_stage_rows_wrap"></div>
     <div class="step-actions" style="margin-top:0.5rem">
       <button type="button" class="primary" id="uv_add_stage">+ Add stage</button>
+      <button type="button" class="ghost" id="uv_clear_stages">Clear all stages</button>
       <button type="button" class="ghost" id="uv_load_rush">Load Rush-like chain</button>
     </div>
     <p id="uv_warnings" class="hint" style="margin-top:0.5rem"></p>
@@ -546,7 +580,7 @@
             <option value="mmorpg_blizzard">Blizzard — long ground cold zone</option>
             <option value="mmorpg_black_hole">Black hole — tight pulsing void zone</option>
             <option value="mmorpg_chain_totem">Chain lightning totem — fast-tick ground node</option>
-            <option value="mmorpg_backflip">Backflip — backward evade motion</option>
+            <option value="mmorpg_backflip">Backflip — move caster back (evade)</option>
           </optgroup>
         </select>
       </div>
@@ -565,31 +599,14 @@
       <pre id="mmorpg_ref_summary" class="mono" style="margin-top:0.5rem;white-space:pre-wrap;font-size:0.78rem;max-height:20rem;overflow:auto;background:var(--panel2);padding:0.65rem;border-radius:8px;border:1px solid var(--border)"></pre>
     </details>
   </div>
+  </div><!-- skill_action_workspace_top -->
 
-  <div class="step-card section-anchor" id="sec-triggers">
+  <div class="step-card section-anchor app-tab-triggers-panel hidden" id="sec-triggers">
     <h3>Trigger effects (optional)</h3>
-    <p class="hint">Attach a reusable <span class="mono">skill_effects</span> id to trigger events. Enable one or more checkboxes below.</p>
-    <div class="row">
-      <div>
-        <label for="trg_effect_id">Effect id</label>
-        <input id="trg_effect_id" type="text" class="mono" placeholder="lost_essence:defender_counterattack_focus" />
-      </div>
-      <div class="row" style="grid-template-columns:1fr 1fr 1fr; gap:0.5rem">
-        <div>
-          <label for="trg_chance">Chance (0..1)</label>
-          <input id="trg_chance" type="number" value="1" min="0" max="1" step="0.05" />
-        </div>
-        <div>
-          <label for="trg_stacks">Stacks</label>
-          <input id="trg_stacks" type="number" value="1" min="1" step="1" />
-        </div>
-        <div>
-          <label for="trg_effect_level">effect_level (optional)</label>
-          <input id="trg_effect_level" type="number" value="" min="1" step="1" placeholder="use cast rank if empty" />
-        </div>
-      </div>
-    </div>
-    <div class="inline-check"><input type="checkbox" id="trg_on_cast" /><label for="trg_on_cast">on_cast</label></div>
+    <p class="hint">Attach reusable <span class="mono">skill_effects</span> ids. Add multiple rows for several buffs (e.g. stun on target + counterattack on self). <strong>on_cast</strong> / <strong>on_block</strong> / <strong>on_take_damage</strong> use the <em>first</em> row only; <strong>on_hit</strong> emits one JSON entry per row. For <strong>passive / mastery</strong> skill_actions, enable <strong>Trigger effects</strong> below and edit here — same fields as active skills.</p>
+    <div id="trg_effects_rows_wrap"></div>
+    <button type="button" class="ghost" id="trg_add_effect_row" style="margin-top:0.35rem">+ Add effect</button>
+    <div class="inline-check" style="margin-top:0.75rem"><input type="checkbox" id="trg_on_cast" /><label for="trg_on_cast">on_cast</label></div>
     <div class="inline-check"><input type="checkbox" id="trg_on_hit" /><label for="trg_on_hit">on_hit</label></div>
     <div class="inline-check"><input type="checkbox" id="trg_on_block" /><label for="trg_on_block">on_block</label></div>
     <div class="inline-check"><input type="checkbox" id="trg_on_take_damage" /><label for="trg_on_take_damage">on_take_damage</label></div>
@@ -650,6 +667,8 @@
       <p class="hint">Places the visual on the hit target's current block position (player or mob).</p>
     </div>
   </div>
+
+  <div id="skill_action_workspace_tail" class="skill-action-builder-chunk">
 
   <div class="simple-advanced">
     <h2>Optional — gear &amp; hotbar art</h2>
@@ -1442,11 +1461,11 @@
       </div>
     </div>
   </div>
-  </div><!-- skill_action_workspace -->
+  </div><!-- skill_action_workspace_tail -->
 
   <div id="passive_mastery_workspace" class="hidden">
     <h2 class="section-hero">Passive / mastery skill_action</h2>
-    <p class="hint">Writes <span class="mono">data/&lt;ns&gt;/skill_actions/*.json</span> with <span class="mono">execution.type: "passive"</span>. <strong>Reflect</strong> uses <span class="mono">passive_reflect_modifiers</span> (multiple rows) or legacy flat keys. <strong>Stat modifiers</strong> as above; optional <span class="mono">passive_mainhand_gear_types</span> / <span class="mono">passive_mainhand_weapon_types</span> narrow when bonuses apply. <strong>Gear mastery</strong> puts <span class="mono">mastery_unlocks_gear_type_prefixes</span> (and optional <span class="mono">class_mastery</span>) on <span class="mono">execution</span> — tree nodes only set <span class="mono">skill_id</span> + layout; they do not carry those keys.</p>
+    <p class="hint">Writes <span class="mono">data/&lt;ns&gt;/skill_actions/*.json</span> with <span class="mono">execution.type: "passive"</span>. <strong>Reflect</strong> uses <span class="mono">passive_reflect_modifiers</span> (multiple rows) or legacy flat keys. <strong>Stat modifiers</strong> as above; optional <span class="mono">passive_mainhand_gear_types</span> / <span class="mono">passive_mainhand_weapon_types</span> narrow when bonuses apply. <strong>Gear mastery</strong> puts <span class="mono">mastery_unlocks_gear_type_prefixes</span> (and optional <span class="mono">class_mastery</span>) on <span class="mono">execution</span> — tree nodes only set <span class="mono">skill_action_id</span> (legacy <span class="mono">skill_id</span>) + layout; they do not carry those keys.</p>
 
     <h2>Passive features</h2>
     <p class="hint">Enable any combination; one <span class="mono">skill_actions</span> JSON merges every checked block into <span class="mono">execution</span>.</p>
@@ -1463,12 +1482,17 @@
         <input type="checkbox" id="pm_include_mastery" />
         <label for="pm_include_mastery">Mastery: gear prefixes / class mastery (<span class="mono">execution</span>)</label>
       </div>
+      <div class="inline-check">
+        <input type="checkbox" id="pm_include_triggers" />
+        <label for="pm_include_triggers">Trigger effects (<span class="mono">execution.trigger_effects</span>) — edit in <a href="#sec-triggers">Trigger effects</a> below templates</label>
+      </div>
     </div>
 
     <h2>Identity &amp; costs</h2>
+    <p class="hint" style="margin:0 0 0.45rem">Exported file uses <span class="mono">skill_id</span> (required by <span class="mono">skill_actions</span>). Your <span class="mono">skill_nodes</span> row should use <span class="mono">skill_action_id</span> with the same value.</p>
     <div class="row">
       <div>
-        <label for="pm_skill_id">skill_id</label>
+        <label for="pm_skill_id"><span class="mono">skill_id</span> (skill_actions)</label>
         <input id="pm_skill_id" type="text" class="mono" value="lost_essence:defender/my_passive" />
       </div>
       <div>
@@ -1525,7 +1549,7 @@
         <input type="checkbox" id="pm_class_mastery_exec" />
         <label for="pm_class_mastery_exec">execution.class_mastery (this tree’s class gate for other trees)</label>
       </div>
-      <p class="hint">Preview is one <span class="mono">skill_actions</span> JSON. The matching <span class="mono">skill_nodes</span> row only needs <span class="mono">skill_id</span>, <span class="mono">mastery</span>, layout, and point gates — leave gear/class keys off the node.</p>
+      <p class="hint">Preview is one <span class="mono">skill_actions</span> JSON. The matching <span class="mono">skill_nodes</span> row only needs <span class="mono">skill_action_id</span> (legacy <span class="mono">skill_id</span>), <span class="mono">mastery</span>, layout, and point gates — leave gear/class keys off the node.</p>
     </div>
 
     <h2>Import skill_action</h2>
@@ -1534,17 +1558,74 @@
   </div>
 
   <div id="effect_workspace" class="hidden">
-    <h2 class="section-hero">Skill effect builder</h2>
-    <p class="hint">Build reusable effect JSON for <span class="mono">data/&lt;namespace&gt;/skill_effects/</span>, then reference it from skill actions via <span class="mono">execution.trigger_effects</span>.</p>
+    <h2 class="section-hero" id="fx_workspace_hero">Skill effect builder</h2>
+    <p class="hint fx-intro-skill" id="fx_intro_skill">Author <span class="mono">data/&lt;namespace&gt;/skill_effects/</span>. Skills reference these with <span class="mono">execution.trigger_effects</span> and related fields. Same step types as gear buffs below, but skill effects are owned by the skill tree / actions.</p>
+    <p class="hint fx-intro-gear hidden" id="fx_intro_gear"><span class="gear-badge">Gear</span> Two linked outputs: <strong>(1)</strong> the <span class="mono">gear_effects/</span> buff definition (what happens when the proc fires), and <strong>(2)</strong> optional <span class="mono">gear_effect_sets/</span> bindings below — <em>when</em> it fires from a set, <strong>proc chance</strong> by piece count, and <strong>cooldown</strong>. Implicits or tags must set the same <span class="mono">gear_effect_set</span> id on items.</p>
 
-    <h2>Identity</h2>
-    <label for="fx_id">Effect id</label>
+    <h2 id="fx_heading_identity">Identity</h2>
+    <label for="fx_id" id="fx_label_fx_id">Effect id</label>
     <input id="fx_id" type="text" class="mono" value="lost_essence:my_effect" placeholder="lost_essence:defender_counterattack_focus" />
-    <label for="fx_filename">File name when downloading</label>
+    <label for="fx_filename" id="fx_label_fx_filename">File name when downloading</label>
     <input id="fx_filename" type="text" value="my_effect.json" />
 
+    <div id="fx_gear_proc_panel" class="step-card hidden" style="margin-top:1rem">
+      <h3><span class="gear-badge">Set proc</span> <span class="mono">gear_effect_sets/</span></h3>
+      <p class="hint">Defines <strong>when</strong> the gear buff runs and how often. Each checked trigger becomes one datapack file. Values here do <em>not</em> go inside <span class="mono">gear_effects/*.json</span> — they are separate bindings that call <span class="mono">apply_gear_effect</span> with the id above.</p>
+      <label for="fx_gs_set_id"><span class="mono">set_id</span> (must match gear’s <span class="mono">gear_effect_set</span>)</label>
+      <input id="fx_gs_set_id" type="text" class="mono" placeholder="heroic" />
+      <div class="row" style="margin-top:0.65rem">
+        <div>
+          <label for="fx_gs_cooldown"><strong>Cooldown</strong> (<span class="mono">cooldown_sec</span>) — seconds before this binding can proc again</label>
+          <input id="fx_gs_cooldown" type="number" value="8" min="0" step="1" title="0 = no cooldown" />
+        </div>
+        <div>
+          <label><span class="mono">apply_gear_effect</span> rank — <span class="mono">effect_level</span> / <span class="mono">effect_stacks</span></label>
+          <div style="display:flex;gap:0.5rem;margin-top:0.2rem">
+            <input id="fx_gs_effect_level" type="number" value="1" min="1" step="1" style="flex:1" />
+            <input id="fx_gs_effect_stacks" type="number" value="1" min="1" step="1" style="flex:1" />
+          </div>
+        </div>
+      </div>
+      <h4 style="margin:0.85rem 0 0.35rem;font-size:0.88rem;color:var(--muted)">Proc chance (<span class="mono">chance_by_pieces</span>)</h4>
+      <p class="hint" style="margin-top:0">After a trigger fires, the game rolls this chance (0–100%). The highest piece tier you qualify for wins — e.g. with 3 pieces and tiers 1–5 defined, the <span class="mono">"3"</span> value is used.</p>
+      <div class="inline-check" style="margin-top:0.5rem">
+        <input type="checkbox" id="fx_gs_advanced_chance" />
+        <label for="fx_gs_advanced_chance">Manual JSON (override simple % fields below)</label>
+      </div>
+      <div id="fx_gs_simple_chance_row" class="row" style="margin-top:0.45rem">
+        <div>
+          <label for="fx_gs_trigger_chance_pct">Trigger chance at <strong>1 piece</strong> (%)</label>
+          <input id="fx_gs_trigger_chance_pct" type="number" value="10" min="0" max="100" step="0.5" title="Probability 0–100%" />
+        </div>
+        <div>
+          <label for="fx_gs_chance_bonus_per_piece_pct">Extra % per <strong>additional</strong> piece</label>
+          <input id="fx_gs_chance_bonus_per_piece_pct" type="number" value="2" min="0" max="100" step="0.5" title="Added for 2nd, 3rd, … piece (capped at 100%)" />
+        </div>
+        <div>
+          <label for="fx_gs_max_piece_tier">Max piece tier in table</label>
+          <input id="fx_gs_max_piece_tier" type="number" value="5" min="1" max="12" step="1" title="Generates keys 1…N for chance_by_pieces" />
+        </div>
+      </div>
+      <label for="fx_gs_chance_json" style="margin-top:0.65rem"><span class="mono">chance_by_pieces</span> JSON <span id="fx_gs_chance_json_hint">(edit when manual mode is on)</span></label>
+      <textarea id="fx_gs_chance_json" class="mono" style="min-height:5.5rem;font-size:0.78rem">{
+  "1": 0.08,
+  "2": 0.12,
+  "3": 0.16,
+  "4": 0.2,
+  "5": 0.24
+}</textarea>
+      <p class="hint" style="margin-top:0.35rem" id="fx_gs_chance_explainer">Turn off <strong>Manual JSON</strong> and use <strong>Preview</strong> — the textarea is auto-filled from the % fields.</p>
+      <h4 style="margin:0.85rem 0 0.35rem;font-size:0.88rem;color:var(--muted)">When to proc (triggers)</h4>
+      <div class="inline-check"><input type="checkbox" id="fx_gs_on_cast_magic" /><label for="fx_gs_on_cast_magic">on_cast — magic skill (<span class="mono">on_cast_magic</span>: spell, ground_rupture, buff, comeback_pulse)</label></div>
+      <div class="inline-check"><input type="checkbox" id="fx_gs_on_cast_physical" /><label for="fx_gs_on_cast_physical">on_cast — physical skill (<span class="mono">on_cast_physical</span>: melee, cone_melee_strike)</label></div>
+      <div class="inline-check"><input type="checkbox" id="fx_gs_on_take_damage" /><label for="fx_gs_on_take_damage">on_take_damage (<span class="mono">on_hit_taken</span>)</label></div>
+      <div class="inline-check"><input type="checkbox" id="fx_gs_on_block" /><label for="fx_gs_on_block">on_block (<span class="mono">on_block_taken</span>)</label></div>
+      <div class="inline-check"><input type="checkbox" id="fx_gs_on_hit_dealt" /><label for="fx_gs_on_hit_dealt">on_hit — damage dealt (<span class="mono">on_hit_dealt</span>, any hit)</label></div>
+      <div class="inline-check"><input type="checkbox" id="fx_gs_on_melee_hit" /><label for="fx_gs_on_melee_hit">on_hit — melee only (<span class="mono">on_melee_hit_dealt</span>)</label></div>
+    </div>
+
+    <h2 id="fx_heading_display">Display <span class="pill">level 1 only</span></h2>
     <div id="fx_identity_block">
-    <h2>Display <span class="pill">level 1 only</span></h2>
     <div class="row">
       <div>
         <label for="fx_name">Display name</label>
@@ -1559,7 +1640,7 @@
     <input id="fx_desc" type="text" value="" />
     </div>
 
-    <h2>Rules</h2>
+    <h2 id="fx_heading_rules">Rules — buff timing</h2>
     <div class="row">
       <div>
         <label for="fx_duration">duration_seconds</label>
@@ -1579,19 +1660,27 @@
       <strong>final stat × ratio</strong> (e.g. <span class="mono">stat: lost_essence:magic_attack</span>, <span class="mono">ratio_each: 0.44</span> → 44% of magic attack per pulse).
       Use template <strong>HoT — magic attack 44% / 2s ×4</strong> or buff step <strong>Heal — over time</strong> for the same idea.
     </p>
+    <p class="hint fx-gear-rules-extra hidden" id="fx_hint_gear_rules">For <strong>gear</strong>: proc <strong>chance</strong> and <strong>cooldown</strong> are <em>not</em> stored here — configure them in the <span class="mono">gear_effect_sets</span> panel above. This section is only the buff payload (<span class="mono">gear_effects/</span>).</p>
     <label for="fx_refresh_policy">refresh_policy</label>
     <select id="fx_refresh_policy">
       <option value="refresh">refresh</option>
       <option value="extend">extend</option>
       <option value="ignore_if_present">ignore_if_present</option>
     </select>
-    <div class="inline-check">
-      <input id="fx_allow_player_skills" type="checkbox" checked />
-      <label for="fx_allow_player_skills">Allow player skills while this effect is active</label>
+    <div id="fx_skill_only_player_locks">
+      <div class="inline-check">
+        <input id="fx_allow_player_skills" type="checkbox" checked />
+        <label for="fx_allow_player_skills">Allow player skills while this effect is active</label>
+      </div>
+      <div class="inline-check">
+        <input id="fx_stop_player_movement" type="checkbox" />
+        <label for="fx_stop_player_movement">Stop player movement (stun / root — server clears velocity each tick until effect ends)</label>
+      </div>
     </div>
 
-    <h2>Effects</h2>
-    <p class="hint">Use <strong>+ Add effect</strong>, choose a type from the dropdown, then fill numbers. No manual JSON required. Summon-on-damage procs are the <strong>While active — chance summon on take / deal damage</strong> types (one row per array entry).</p>
+    <h2 id="fx_heading_effects">Effect steps</h2>
+    <p class="hint" id="fx_effects_hint_skill">Use <strong>+ Add effect</strong> for <span class="mono">on_apply</span> / <span class="mono">while_active</span> / <span class="mono">on_expire</span> steps. <strong>Summon</strong> steps pair with skill <span class="mono">trigger_effects</span>. <strong>While active — chance summon on take / deal damage</strong> is for skill/gear buffs that are already running.</p>
+    <p class="hint hidden" id="fx_effects_hint_gear"><strong>Gear buff steps</strong> — what runs when a set proc applies this id. Prefer short <span class="mono">duration_seconds</span> wrapper + real timing in <span class="mono">apply_mob_effect</span> / HoT steps. “While active” procs (summon on damage) apply while this gear buff is up.</p>
     <div class="row">
       <div>
         <label for="fx_template_pick">Effect template</label>
@@ -1614,28 +1703,174 @@
     <div id="fx_rows_wrap"></div>
     <button type="button" class="primary" id="fx_add_row">+ Add effect</button>
 
-    <h2 style="margin-top:1.75rem">Effect levels</h2>
-    <p class="hint">Set up <strong>Rules</strong> and <strong>Effects</strong> above first, then use this section: level <strong>1</strong> is the root (merged into every level in-game). <strong>+ Add level effect</strong> copies the <em>currently selected level</em> (including all effect rows) into level 2, 3, … so you only change what differs. <strong>Remove level effect</strong> deletes the level you are editing (not level 1). Optional <span class="mono">skill_action</span> per level is for documentation.</p>
-    <div class="row" style="align-items:flex-end">
-      <div>
-        <label for="fx_active_effect_level">Editing</label>
-        <select id="fx_active_effect_level" style="margin-top:0.25rem;min-width:220px"></select>
+    <div id="fx_skill_only_effect_levels">
+      <h2 style="margin-top:1.75rem">Effect levels</h2>
+      <p class="hint">Set up <strong>Rules</strong> and <strong>Effects</strong> above first, then use this section: level <strong>1</strong> is the root (merged into every level in-game). <strong>+ Add level effect</strong> copies the <em>currently selected level</em> (including all effect rows) into level 2, 3, … so you only change what differs. <strong>Remove level effect</strong> deletes the level you are editing (not level 1). Optional <span class="mono">skill_action</span> per level is for documentation.</p>
+      <div class="row" style="align-items:flex-end">
+        <div>
+          <label for="fx_active_effect_level">Editing</label>
+          <select id="fx_active_effect_level" style="margin-top:0.25rem;min-width:220px"></select>
+        </div>
+        <div>
+          <label for="fx_level_banner" style="visibility:hidden">Level</label>
+          <p id="fx_level_banner" class="hint" style="margin:0"></p>
+        </div>
+        <div style="align-self:end;display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button type="button" class="primary" id="fx_add_effect_level">+ Add level effect</button>
+          <button type="button" class="ghost" id="fx_remove_effect_level" disabled title="Select level 2+ in the list, then remove it">Remove level effect</button>
+        </div>
       </div>
-      <div>
-        <label for="fx_level_banner" style="visibility:hidden">Level</label>
-        <p id="fx_level_banner" class="hint" style="margin:0"></p>
-      </div>
-      <div style="align-self:end;display:flex;gap:0.5rem;flex-wrap:wrap">
-        <button type="button" class="primary" id="fx_add_effect_level">+ Add level effect</button>
-        <button type="button" class="ghost" id="fx_remove_effect_level" disabled title="Select level 2+ in the list, then remove it">Remove level effect</button>
+      <div id="fx_level_skill_action_row" class="row hidden">
+        <div style="flex:1">
+          <label for="fx_level_skill_action">skill_action (optional, this level)</label>
+          <input id="fx_level_skill_action" type="text" class="mono" placeholder="lost_essence:defender/lv_2_rush" />
+        </div>
       </div>
     </div>
-    <div id="fx_level_skill_action_row" class="row hidden">
-      <div style="flex:1">
-        <label for="fx_level_skill_action">skill_action (optional, this level)</label>
-        <input id="fx_level_skill_action" type="text" class="mono" placeholder="lost_essence:defender/lv_2_rush" />
+  </div>
+
+  <div id="mob_affix_workspace" class="hidden">
+    <h2 class="section-hero section-anchor" id="sec-mob-affix">Mob affix builder</h2>
+    <p class="hint">Datapack path: <span class="mono">data/&lt;your_namespace&gt;/mob_affixes/&lt;id&gt;.json</span>. Affixes roll on scaled mobs (server config). Optional <span class="mono">mob_skill</span> attaches spell-cast AI; it applies when the mob has <em>no</em> <span class="mono">mob_skill</span> from entity / mob-type / mod-namespace rules (affix fills the gap). Use <span class="mono">chance_of_casting</span> as 0–1 or as a percent &gt; 1 (e.g. 12 → 12%). Spell damage uses <span class="mono">damage_stat</span> <span class="mono">physical_attack</span> / <span class="mono">magic_attack</span> on the mob’s stored LE stats.</p>
+
+    <div class="row">
+      <div>
+        <label for="ma_id">id <span class="pill">lowercase, file name</span></label>
+        <input id="ma_id" type="text" class="mono" value="my_affix" placeholder="arcane" />
+      </div>
+      <div>
+        <label for="ma_filename">Download file name</label>
+        <input id="ma_filename" type="text" class="mono" value="my_affix.json" />
       </div>
     </div>
+    <div class="row">
+      <div>
+        <label for="ma_display_name">display_name</label>
+        <input id="ma_display_name" type="text" value="My Affix" />
+      </div>
+      <div>
+        <label for="ma_color">color (nameplate)</label>
+        <select id="ma_color" class="mono">
+          <option value="GRAY">GRAY</option>
+          <option value="DARK_GRAY">DARK_GRAY</option>
+          <option value="BLUE">BLUE</option>
+          <option value="DARK_BLUE">DARK_BLUE</option>
+          <option value="GREEN">GREEN</option>
+          <option value="DARK_GREEN">DARK_GREEN</option>
+          <option value="AQUA">AQUA</option>
+          <option value="DARK_AQUA">DARK_AQUA</option>
+          <option value="RED">RED</option>
+          <option value="DARK_RED">DARK_RED</option>
+          <option value="LIGHT_PURPLE" selected>LIGHT_PURPLE</option>
+          <option value="DARK_PURPLE">DARK_PURPLE</option>
+          <option value="GOLD">GOLD</option>
+          <option value="YELLOW">YELLOW</option>
+          <option value="WHITE">WHITE</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div><label for="ma_min_lvl">min_lvl</label><input id="ma_min_lvl" type="number" value="1" min="1" step="1" /></div>
+      <div><label for="ma_weight">weight (roll)</label><input id="ma_weight" type="number" value="100" min="0" step="1" /></div>
+    </div>
+    <div class="row">
+      <div><label for="ma_hp_multi">hp_multi</label><input id="ma_hp_multi" type="number" value="1.0" min="0.01" step="0.01" /></div>
+      <div><label for="ma_dmg_multi">dmg_multi</label><input id="ma_dmg_multi" type="number" value="1.0" min="0.01" step="0.01" /></div>
+    </div>
+    <div class="row">
+      <div><label for="ma_stat_multi">stat_multi</label><input id="ma_stat_multi" type="number" value="1.0" min="0.01" step="0.01" /></div>
+      <div></div>
+    </div>
+
+    <div class="step-card" style="margin-top:0.75rem">
+      <div class="inline-check">
+        <input type="checkbox" id="ma_enable_mob_skill" />
+        <label for="ma_enable_mob_skill"><strong>mob_skill</strong> — periodic spell cast (AI)</label>
+      </div>
+      <p class="hint" style="margin:0.35rem 0 0"><span class="mono">skill_id</span> must match a <span class="mono">skill_actions</span> entry whose <span class="mono">execution.type</span> is <span class="mono">spell</span>.</p>
+      <div id="ma_mob_skill_fields" class="hidden" style="margin-top:0.65rem">
+        <div class="inline-check" style="margin-bottom:0.5rem">
+          <input type="checkbox" id="ma_can_cast_skills" checked />
+          <label for="ma_can_cast_skills">can_cast_skills</label>
+        </div>
+        <label for="ma_skill_id">skill_id</label>
+        <input id="ma_skill_id" type="text" class="mono" placeholder="lost_essence:sorcerer/ice_thorns" />
+        <div class="row">
+          <div><label for="ma_skill_rank">skill_rank</label><input id="ma_skill_rank" type="number" value="1" min="1" max="99" step="1" /></div>
+          <div><label for="ma_chance_of_casting">chance_of_casting</label><input id="ma_chance_of_casting" type="number" value="0.1" min="0" step="0.01" title="0–1 fraction, or &gt;1 treated as percent (e.g. 12 = 12%)" /></div>
+        </div>
+        <div class="row">
+          <div><label for="ma_cast_interval_ticks">cast_interval_ticks</label><input id="ma_cast_interval_ticks" type="number" value="20" min="1" step="1" /></div>
+          <div><label for="ma_cooldown_ticks">cooldown_ticks</label><input id="ma_cooldown_ticks" type="number" value="40" min="0" step="1" /></div>
+        </div>
+      </div>
+    </div>
+
+    <h2>Import mob_affix JSON</h2>
+    <input type="file" id="ma_import_file" accept=".json,application/json" />
+    <button type="button" class="ghost" id="ma_import_btn">Choose JSON…</button>
+  </div>
+
+  <div id="gear_affix_workspace" class="hidden">
+    <h2 class="section-hero section-anchor" id="sec-gear-affix">Gear affix builder</h2>
+    <p class="hint">Save under <span class="mono">data/&lt;namespace&gt;/gear_prefix/*.json</span> or <span class="mono">gear_suffix/*.json</span> to match <strong>Affix slot</strong>. Stats use short ids (e.g. <span class="mono">physical_defense</span>); the game resolves them to <span class="mono">lost_essence:&lt;stat&gt;</span>. Optional <span class="mono">level_bands</span> on each line pick min/max by item level (highest <span class="mono">min_lvl</span> ≤ item level).</p>
+
+    <div class="row">
+      <div>
+        <label for="gf_affix_slot">Affix slot</label>
+        <select id="gf_affix_slot">
+          <option value="PREFIX">PREFIX → gear_prefix/</option>
+          <option value="SUFFIX">SUFFIX → gear_suffix/</option>
+        </select>
+      </div>
+      <div>
+        <label for="gf_filename">Download file name</label>
+        <input id="gf_filename" type="text" class="mono" value="my_affix.json" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="gf_display_name">display_name</label>
+        <input id="gf_display_name" type="text" value="My Affix" />
+      </div>
+      <div>
+        <label for="gf_weight">weight</label>
+        <input id="gf_weight" type="number" value="100" min="0" step="1" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="gf_min_lvl">min_lvl</label>
+        <input id="gf_min_lvl" type="number" value="0" min="0" step="1" />
+      </div>
+      <div>
+        <label for="gf_gear_effect_set">gear_effect_set (optional)</label>
+        <input id="gf_gear_effect_set" type="text" class="mono" placeholder="rz_bulwark" />
+      </div>
+    </div>
+
+    <h3 style="font-size:0.88rem;color:var(--muted);margin:1rem 0 0.35rem">gear_slots</h3>
+    <p class="hint" style="margin:0 0 0.5rem">Leave all unchecked to omit the field (matches any slot, per registry).</p>
+    <div class="step-card" style="margin-top:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr));gap:0.35rem 0.75rem">
+      <label class="inline-check" style="margin:0"><input type="checkbox" class="gf-slot" value="head" /> head</label>
+      <label class="inline-check" style="margin:0"><input type="checkbox" class="gf-slot" value="chest" /> chest</label>
+      <label class="inline-check" style="margin:0"><input type="checkbox" class="gf-slot" value="legs" /> legs</label>
+      <label class="inline-check" style="margin:0"><input type="checkbox" class="gf-slot" value="feet" /> feet</label>
+      <label class="inline-check" style="margin:0"><input type="checkbox" class="gf-slot" value="gloves" /> gloves</label>
+      <label class="inline-check" style="margin:0"><input type="checkbox" class="gf-slot" value="mainhand" /> mainhand</label>
+      <label class="inline-check" style="margin:0"><input type="checkbox" class="gf-slot" value="offhand" /> offhand</label>
+    </div>
+
+    <label for="gf_weapon_types">weapon_types (comma-separated, optional)</label>
+    <input id="gf_weapon_types" type="text" class="mono" placeholder="bow, dagger, *" style="margin-top:0.25rem" />
+
+    <h3 style="font-size:0.88rem;color:var(--muted);margin:1rem 0 0.35rem">stats</h3>
+    <div id="gf_stat_rows"></div>
+    <button type="button" class="ghost" id="gf_add_stat" style="margin-top:0.5rem">+ Add stat line</button>
+
+    <h2 style="margin-top:1.25rem">Import gear affix JSON</h2>
+    <input type="file" id="gf_import_file" accept=".json,application/json" />
+    <button type="button" class="ghost" id="gf_import_btn">Choose JSON…</button>
   </div>
 
   <h2 class="section-anchor" id="sec-output">Output</h2>
@@ -1693,6 +1928,16 @@
     <button type="button" id="pm_copy">Copy to clipboard</button>
     <button type="button" id="pm_download">Download JSON</button>
   </div>
+  <div id="mob_affix_output_actions" class="hidden">
+    <button type="button" class="primary" id="ma_build">Preview mob affix JSON</button>
+    <button type="button" id="ma_copy">Copy to clipboard</button>
+    <button type="button" id="ma_download">Download JSON</button>
+  </div>
+  <div id="gear_affix_output_actions" class="hidden">
+    <button type="button" class="primary" id="gf_build">Preview gear affix JSON</button>
+    <button type="button" id="gf_copy">Copy to clipboard</button>
+    <button type="button" id="gf_download">Download JSON</button>
+  </div>
   <div class="output-panel">
   <div id="msg"></div>
   <textarea id="out" readonly></textarea>
@@ -1719,8 +1964,8 @@
       damage_flat: "Damage — instant, flat (your HP pool)",
       damage_percent_max_health: "Damage — instant, % of max health",
       damage_over_time: "Damage — over time (pulses)",
-      apply_mob_effect: "Apply potion / buff effect",
-      remove_mob_effect: "Remove a potion / buff effect",
+      apply_mob_effect: "Apply mob / potion effects (vanilla or mod)",
+      remove_mob_effect: "Remove mob / potion effect(s)",
       abort_if_missing_mob_effect: "Stop skill if you do not have this effect",
       add_stat_modifier: "Change a combat stat (buff or debuff)",
       remove_stat_modifiers_from_source_prefix: "Remove buffs from a source prefix",
@@ -1762,7 +2007,8 @@
       ["dec_base_stat", "Decrease base stat (flat)"],
       ["hot_percent_hp", "Heal over time (max HP % / optional stat / flat)"],
       ["dot_percent_hp", "Damage over time (% max resource)"],
-      ["apply_mob_effect", "Apply mob effect"],
+      ["apply_mob_effect", "Apply mob / potion effects (vanilla or mod)"],
+      ["cast_summon", "Summon (cast_summon step)"],
       ["remove_mob_effect", "Remove mob effect"],
       ["play_sound", "Play sound"],
       ["while_active_proc_take", "While active — chance summon on take damage"],
@@ -1855,6 +2101,97 @@
     const trgTargetGeoEnabled = document.getElementById("trg_target_geo_enabled");
     const trgTargetGeoRow = document.getElementById("trg_target_geo_row");
 
+    function trgEffectRowTemplate() {
+      return `<div class="trg-effect-row step-card" style="margin-top:0.5rem;padding:0.65rem;border:1px solid var(--border,#444);border-radius:8px">
+        <div class="row">
+          <div class="field-full"><label>Effect id</label><input type="text" class="mono trg-row-effect" placeholder="lost_essence:defender_counterattack_focus" /></div>
+        </div>
+        <div class="row" style="grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-top:0.35rem">
+          <div><label>Chance (0..1)</label><input type="number" class="trg-row-chance" value="1" min="0" max="1" step="0.05" /></div>
+          <div><label>Stacks</label><input type="number" class="trg-row-stacks" value="1" min="1" step="1" /></div>
+          <div><label>effect_level (optional)</label><input type="number" class="trg-row-level" value="" min="1" step="1" placeholder="use cast rank if empty" /></div>
+        </div>
+        <div class="field-full" style="margin-top:0.35rem"><label>requires_learned_skill (optional)</label><input type="text" class="mono trg-row-requires-skill" placeholder="lost_essence:defender/counterattack_focus — same as skill_actions.skill_id / node.skill_action_id" /></div>
+        <div class="trg-row-hit-wrap hidden" style="margin-top:0.4rem">
+          <span class="hint" style="margin-right:0.5rem">on_hit — apply to:</span>
+          <div class="inline-check"><input type="checkbox" class="trg-row-hit-self" checked /><label>self</label></div>
+          <div class="inline-check"><input type="checkbox" class="trg-row-hit-target" /><label>target</label></div>
+        </div>
+        <div style="margin-top:0.4rem"><button type="button" class="ghost trg-row-remove">Remove</button></div>
+      </div>`;
+    }
+
+    function addTrgEffectRow(preset) {
+      const wrap = document.getElementById("trg_effects_rows_wrap");
+      if (!wrap) return;
+      wrap.insertAdjacentHTML("beforeend", trgEffectRowTemplate());
+      const row = wrap.lastElementChild;
+      if (preset && typeof preset === "object") {
+        if (preset.effect != null) row.querySelector(".trg-row-effect").value = String(preset.effect);
+        if (preset.chance != null) row.querySelector(".trg-row-chance").value = String(preset.chance);
+        if (preset.stacks != null) row.querySelector(".trg-row-stacks").value = String(preset.stacks);
+        if (preset.effect_level != null) row.querySelector(".trg-row-level").value = String(Math.max(1, Math.trunc(Number(preset.effect_level))));
+        let hs = true;
+        let ht = false;
+        if (preset.hit_self != null) hs = !!preset.hit_self;
+        if (preset.hit_target != null) ht = !!preset.hit_target;
+        if (preset.hit_self == null && preset.hit_target == null && preset.apply_to != null
+            && String(preset.apply_to).toLowerCase() === "target") {
+          hs = false;
+          ht = true;
+        }
+        const sEl = row.querySelector(".trg-row-hit-self");
+        const tEl = row.querySelector(".trg-row-hit-target");
+        if (sEl) sEl.checked = hs;
+        if (tEl) tEl.checked = ht;
+        if (preset.requires_learned_skill != null) {
+          const reqEl = row.querySelector(".trg-row-requires-skill");
+          if (reqEl) reqEl.value = String(preset.requires_learned_skill);
+        }
+      }
+      document.querySelectorAll("#trg_effects_rows_wrap .trg-row-hit-wrap").forEach((el) => {
+        el.classList.toggle("hidden", !(trgOnHit && trgOnHit.checked));
+      });
+    }
+
+    function clearTrgEffectRows() {
+      const wrap = document.getElementById("trg_effects_rows_wrap");
+      if (wrap) wrap.innerHTML = "";
+    }
+
+    function collectTrgEffectRows() {
+      const out = [];
+      for (const row of document.querySelectorAll("#trg_effects_rows_wrap .trg-effect-row")) {
+        const effect = (row.querySelector(".trg-row-effect") && row.querySelector(".trg-row-effect").value || "").trim();
+        const chance = Math.max(0, Math.min(1, Number(row.querySelector(".trg-row-chance") && row.querySelector(".trg-row-chance").value) || 1));
+        const stacks = Math.max(1, Math.trunc(Number(row.querySelector(".trg-row-stacks") && row.querySelector(".trg-row-stacks").value) || 1));
+        const lvRaw = String(row.querySelector(".trg-row-level") && row.querySelector(".trg-row-level").value || "").trim();
+        let effect_level = null;
+        if (lvRaw !== "") {
+          const ti = Math.max(1, Math.trunc(Number(lvRaw)));
+          if (!Number.isNaN(ti)) effect_level = ti;
+        }
+        const selfCb = row.querySelector(".trg-row-hit-self");
+        const tgtCb = row.querySelector(".trg-row-hit-target");
+        const hit_self = selfCb ? !!selfCb.checked : true;
+        const hit_target = tgtCb ? !!tgtCb.checked : false;
+        const reqSkill = (row.querySelector(".trg-row-requires-skill") && row.querySelector(".trg-row-requires-skill").value || "").trim();
+        out.push({ effect, chance, stacks, effect_level, hit_self, hit_target, requires_learned_skill: reqSkill || undefined });
+      }
+      return out;
+    }
+
+    function refFromTrgRow(row) {
+      const o = {
+        effect: row.effect,
+        chance: row.chance,
+        stacks: row.stacks,
+      };
+      if (row.effect_level != null) o.effect_level = row.effect_level;
+      if (row.requires_learned_skill) o.requires_learned_skill = row.requires_learned_skill;
+      return o;
+    }
+
     function isSimpleMode() {
       return !!(simpleMode && simpleMode.checked);
     }
@@ -1881,7 +2218,7 @@
         "spell_cast_particle_dust_color",
         "spell_cast_particle_dust_scale",
       ]);
-      document.querySelectorAll("#skill_action_workspace input[type='text'], #skill_action_workspace textarea").forEach(el => {
+      document.querySelectorAll("#skill_action_workspace_top input[type='text'], #skill_action_workspace_top textarea, #skill_action_workspace_tail input[type='text'], #skill_action_workspace_tail textarea").forEach(el => {
         if (simpleModeFieldWhitelist.has(el.id)) {
           el.removeAttribute("readonly");
           return;
@@ -2119,6 +2456,9 @@
         const showReq = !!(requiresActiveEffectEnabled && requiresActiveEffectEnabled.checked);
         requiresActiveEffectRow.classList.toggle("hidden", !showReq);
       }
+      document.querySelectorAll("#trg_effects_rows_wrap .trg-row-hit-wrap").forEach((el) => {
+        el.classList.toggle("hidden", !(trgOnHit && trgOnHit.checked));
+      });
       if (trgTargetGeoRow) {
         const showGeo = !!(trgOnHit && trgOnHit.checked && trgTargetGeoEnabled && trgTargetGeoEnabled.checked);
         trgTargetGeoRow.classList.toggle("hidden", !showGeo);
@@ -2127,8 +2467,6 @@
       syncSpellZoneUi();
       syncMeleeDelayRows();
       syncMeleeGeoFields();
-      const castWrap = document.getElementById("sec-cast-timing");
-      if (castWrap) castWrap.classList.toggle("hidden", m === "effect" || m === "universal");
       syncSimpleModeUi();
     }
 
@@ -2139,6 +2477,19 @@
     if (spellUseCustomGeo) spellUseCustomGeo.addEventListener("change", syncPanels);
     if (trgOnHit) trgOnHit.addEventListener("change", syncPanels);
     if (trgTargetGeoEnabled) trgTargetGeoEnabled.addEventListener("change", syncPanels);
+    const trgEffectsWrap = document.getElementById("trg_effects_rows_wrap");
+    const trgAddRowBtn = document.getElementById("trg_add_effect_row");
+    if (trgAddRowBtn) trgAddRowBtn.addEventListener("click", () => addTrgEffectRow());
+    if (trgEffectsWrap) {
+      trgEffectsWrap.addEventListener("click", (e) => {
+        const rm = e.target.closest(".trg-row-remove");
+        if (!rm) return;
+        const row = rm.closest(".trg-effect-row");
+        const n = trgEffectsWrap.querySelectorAll(".trg-effect-row").length;
+        if (row && n > 1) row.remove();
+      });
+      if (!trgEffectsWrap.querySelector(".trg-effect-row")) addTrgEffectRow();
+    }
     const simpleClass = document.getElementById("simple_class");
     const simpleNum = document.getElementById("simple_skill_number");
     if (simpleClass) simpleClass.addEventListener("change", syncSimpleModeUi);
@@ -2149,6 +2500,13 @@
     if (mlAddExtraBtn) mlAddExtraBtn.addEventListener("click", () => addMeleeExtraRow("move_forward"));
     const uvAddStageBtn = document.getElementById("uv_add_stage");
     if (uvAddStageBtn) uvAddStageBtn.addEventListener("click", () => addUniversalStageRow("melee_core"));
+    const uvClearStagesBtn = document.getElementById("uv_clear_stages");
+    if (uvClearStagesBtn) uvClearStagesBtn.addEventListener("click", () => {
+      clearUniversalStages();
+      updateUniversalWarnings();
+      msg.textContent = "All universal stages cleared.";
+      msg.className = "ok";
+    });
     const uvLoadRushBtn = document.getElementById("uv_load_rush");
     if (uvLoadRushBtn) uvLoadRushBtn.addEventListener("click", () => {
       clearUniversalStages();
@@ -2338,13 +2696,42 @@
 
     function fillStepCardFromObject(card, stepObj) {
       if (!stepObj || typeof stepObj !== "object") return;
+      let mobApplyExtra = null;
+      let mobRemoveExtra = null;
+      let fillSrc = stepObj;
+      const nt0 = normalizeImportedStepType(stepObj.type);
+      if (nt0 === "apply_mob_effect" && Array.isArray(stepObj.effects) && stepObj.effects.length) {
+        if (!stepObj.effect) {
+          const [first, ...rest] = stepObj.effects;
+          if (first && typeof first === "object") {
+            fillSrc = Object.assign({ type: "apply_mob_effect" }, first);
+            mobApplyExtra = rest.length ? JSON.stringify(rest, null, 2) : "";
+          }
+        } else if (stepObj.effects.length > 1) {
+          mobApplyExtra = JSON.stringify(stepObj.effects.slice(1), null, 2);
+        }
+      }
+      if (nt0 === "remove_mob_effect" && Array.isArray(stepObj.effects) && stepObj.effects.length) {
+        const toStr = (x) => {
+          if (typeof x === "string") return x.trim();
+          if (x && typeof x === "object" && x.effect != null) return String(x.effect).trim();
+          return "";
+        };
+        const ids = stepObj.effects.map(toStr).filter(Boolean);
+        if (!stepObj.effect && ids.length) {
+          fillSrc = { type: "remove_mob_effect", effect: ids[0] };
+          mobRemoveExtra = ids.length > 1 ? JSON.stringify(ids.slice(1), null, 2) : "";
+        } else if (stepObj.effect && ids.length) {
+          mobRemoveExtra = JSON.stringify(ids, null, 2);
+        }
+      }
       const mount = card.querySelector(".step-fields-mount");
       const sel = card.querySelector(".step-type");
-      const nt = normalizeImportedStepType(stepObj.type);
+      const nt = normalizeImportedStepType(fillSrc.type);
       sel.value = STEP_ORDER.includes(nt) ? nt : "heal_flat";
       renderFields(mount, sel.value);
-      for (const [k, v] of Object.entries(stepObj)) {
-        if (k === "type") continue;
+      for (const [k, v] of Object.entries(fillSrc)) {
+        if (k === "type" || k === "effects") continue;
         let inp = null;
         for (const cand of mount.querySelectorAll("[data-param]")) {
           if (cand.dataset.param === k) {
@@ -2357,12 +2744,12 @@
           else inp.value = v === null || v === undefined ? "" : String(v);
         }
       }
-      if (stepObj.stat != null) {
+      if (fillSrc.stat != null) {
         const preset = mount.querySelector(".stat-preset-select");
         const otherWrap = mount.querySelector(".stat-other-wrap");
         const otherInp = mount.querySelector(".stat-other-input");
         if (preset) {
-          const sv = String(stepObj.stat);
+          const sv = String(fillSrc.stat);
           const ok = [...preset.options].some(o => o.value === sv);
           if (ok) preset.value = sv;
           else {
@@ -2373,20 +2760,20 @@
         }
       }
       const statSelPulse = mount.querySelector("select[data-param=\"stat\"]");
-      if (statSelPulse && stepObj.stat != null && stepObj.stat !== "") {
-        const sv = String(stepObj.stat).trim();
+      if (statSelPulse && fillSrc.stat != null && fillSrc.stat !== "") {
+        const sv = String(fillSrc.stat).trim();
         const has = [...statSelPulse.options].some(o => o.value === sv);
         if (!has && sv && !sv.includes(":")) {
           const prefixed = "lost_essence:" + sv;
           if ([...statSelPulse.options].some(o => o.value === prefixed)) statSelPulse.value = prefixed;
         }
       }
-      if (stepObj.message_key != null) {
+      if (fillSrc.message_key != null) {
         const host = mount.querySelector("[data-actionbar-host]");
         if (host) {
           const psel = host.querySelector(".msg-preset-select");
           const custom = host.querySelector(".msg-custom-input");
-          const mk = String(stepObj.message_key);
+          const mk = String(fillSrc.message_key);
           const known = [...(psel ? psel.options : [])].some(o => o.value === mk);
           if (psel) {
             if (known) psel.value = mk;
@@ -2398,6 +2785,14 @@
             }
           }
         }
+      }
+      if (mobApplyExtra != null) {
+        const ta = mount.querySelector(".apply-mob-effects-extra");
+        if (ta) ta.value = mobApplyExtra;
+      }
+      if (mobRemoveExtra != null) {
+        const ta = mount.querySelector(".remove-mob-effects-extra");
+        if (ta) ta.value = mobRemoveExtra;
       }
     }
 
@@ -2642,11 +3037,7 @@
     }
 
     function importTriggerEffectsFromExecution(ex) {
-      setDomField("trg_effect_id", "");
-      setDomField("trg_chance", 1);
-      setDomField("trg_stacks", 1);
-      const trgLvEl = document.getElementById("trg_effect_level");
-      if (trgLvEl) trgLvEl.value = "";
+      clearTrgEffectRows();
       setDomField("trg_on_cast", false, true);
       setDomField("trg_on_hit", false, true);
       setDomField("trg_on_block", false, true);
@@ -2661,31 +3052,39 @@
       setDomField("trg_target_geo_duration", 1);
       setDomField("trg_target_geo_scale", 1);
       setDomField("trg_target_geo_full_bright", false, true);
-      if (!ex || !ex.trigger_effects || typeof ex.trigger_effects !== "object") return;
-      const te = ex.trigger_effects;
-      const order = ["on_cast", "on_hit", "on_block", "on_take_damage"];
-      let first = null;
-      for (const key of order) {
-        const arr = te[key];
-        if (!Array.isArray(arr) || !arr.length) continue;
-        const ref = arr[0];
-        if (!ref || typeof ref !== "object") continue;
-        if (!first) first = ref;
-        if (key === "on_cast") setDomField("trg_on_cast", true, true);
-        if (key === "on_hit") setDomField("trg_on_hit", true, true);
-        if (key === "on_block") setDomField("trg_on_block", true, true);
-        if (key === "on_take_damage") setDomField("trg_on_take_damage", true, true);
+      if (!ex || !ex.trigger_effects || typeof ex.trigger_effects !== "object") {
+        addTrgEffectRow();
+        syncPanels();
+        return;
       }
-      if (first) {
-        if (first.effect != null) setDomField("trg_effect_id", String(first.effect));
-        if (first.chance != null) setDomField("trg_chance", first.chance);
-        if (first.stacks != null) setDomField("trg_stacks", first.stacks);
-        if (first.effect_level != null) {
-          const el = document.getElementById("trg_effect_level");
-          if (el) el.value = String(Math.max(1, Math.trunc(Number(first.effect_level))));
+      const te = ex.trigger_effects;
+      const onHitArr = Array.isArray(te.on_hit) ? te.on_hit : [];
+      if (onHitArr.length) {
+        for (const h of onHitArr) {
+          if (h && typeof h === "object") addTrgEffectRow(h);
+        }
+      } else {
+        let ref = null;
+        for (const key of ["on_cast", "on_block", "on_take_damage"]) {
+          const arr = te[key];
+          if (Array.isArray(arr) && arr[0] && typeof arr[0] === "object") {
+            ref = arr[0];
+            break;
+          }
+        }
+        addTrgEffectRow(ref || {});
+      }
+      const wrap = document.getElementById("trg_effects_rows_wrap");
+      if (wrap && !wrap.querySelector(".trg-effect-row")) addTrgEffectRow();
+      for (const key of ["on_cast", "on_hit", "on_block", "on_take_damage"]) {
+        const arr = te[key];
+        if (Array.isArray(arr) && arr.length) {
+          if (key === "on_cast") setDomField("trg_on_cast", true, true);
+          if (key === "on_hit") setDomField("trg_on_hit", true, true);
+          if (key === "on_block") setDomField("trg_on_block", true, true);
+          if (key === "on_take_damage") setDomField("trg_on_take_damage", true, true);
         }
       }
-      const onHitArr = Array.isArray(te.on_hit) ? te.on_hit : [];
       const onHitFirst = onHitArr.length && onHitArr[0] && typeof onHitArr[0] === "object" ? onHitArr[0] : null;
       if (onHitFirst) {
         if (onHitFirst.target_has_mob_effect != null) {
@@ -2707,6 +3106,9 @@
           }
         }
       }
+      document.querySelectorAll("#trg_effects_rows_wrap .trg-row-hit-wrap").forEach((el) => {
+        el.classList.toggle("hidden", !(trgOnHit && trgOnHit.checked));
+      });
       syncPanels();
     }
 
@@ -2738,6 +3140,37 @@
 
     document.getElementById("import_btn").addEventListener("click", () => document.getElementById("import_file").click());
     document.getElementById("import_file").addEventListener("change", onImportFile);
+
+    const globalImportBtn = document.getElementById("global_import_json_btn");
+    const globalImportFile = document.getElementById("global_import_json_file");
+    if (globalImportBtn && globalImportFile) {
+      globalImportBtn.addEventListener("click", () => globalImportFile.click());
+      globalImportFile.addEventListener("change", (ev) => {
+        const f = ev.target.files && ev.target.files[0];
+        ev.target.value = "";
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const doc = JSON.parse(String(reader.result || "{}"));
+            dispatchImportForActiveMode(doc);
+            const tab = document.getElementById("app_tab");
+            const label = tab && tab.selectedOptions && tab.selectedOptions[0] ? tab.selectedOptions[0].textContent.trim() : "builder";
+            msg.textContent = "Loaded \"" + f.name + "\" into " + label + " — review fields and preview.";
+            msg.className = "ok";
+          } catch (err) {
+            msg.textContent = err.message || String(err);
+            msg.className = "err";
+          }
+        };
+        reader.onerror = () => {
+          msg.textContent = "Could not read file.";
+          msg.className = "err";
+        };
+        reader.readAsText(f, "UTF-8");
+      });
+    }
+
     const mmorpgRefBtn = document.getElementById("mmorpg_ref_btn");
     const mmorpgRefFile = document.getElementById("mmorpg_ref_file");
     const mmorpgRefSummary = document.getElementById("mmorpg_ref_summary");
@@ -2855,7 +3288,7 @@
       }
 
       function mobEffectId() {
-        return txt("effect", "Effect id", "minecraft:regeneration or lost_essence:counterattack", false);
+        return txt("effect", "Effect id", "minecraft:slowness, slow, slowness, or yourmod:custom", false);
       }
 
       switch (type) {
@@ -2936,18 +3369,64 @@
         case "apply_mob_effect":
           addField(mobEffectId(), true);
           addField(num("duration_seconds", "Duration (seconds)", 5, 0.5, 0.05, false), false);
-          addField(num("amplifier", "Strength level (0 = I)", 0, 1, 0, true), false);
+          addField(num("amplifier", "Amplifier (0 = I, 1 = II)", 0, 1, 0, true), false);
           addField((() => {
             const w = el("div", { class: "field-full inline-check" });
             const c = el("input", { type: "checkbox", "data-param": "show_icon", checked: "checked" });
             c.dataset.checkbox = "1";
             w.appendChild(c);
-            w.appendChild(el("label", {}, ["Show icon / particles"]));
+            w.appendChild(el("label", {}, ["Show icon / particles (vanilla HUD)"]));
+            return w;
+          })(), true);
+          addField(el("p", { class: "hint field-full" }, [
+            "Optional: more effects in one step — JSON array. Each object needs ",
+            el("span", { class: "mono" }, ["\"effect\""]),
+            " (full id, shorthand, or alias like ",
+            el("span", { class: "mono" }, ["slow"]),
+            "). Per-entry ",
+            el("span", { class: "mono" }, ["duration_seconds"]),
+            " / ",
+            el("span", { class: "mono" }, ["amplifier"]),
+            " / ",
+            el("span", { class: "mono" }, ["show_icon"]),
+            " override the fields above for that row only. For ",
+            el("strong", {}, ["Skill effect JSON"]),
+            ", set ",
+            el("span", { class: "mono" }, ["display.name"]),
+            " so Lost Essence shows your name while the real mob effect id drives gameplay.",
+          ]), true);
+          addField((() => {
+            const w = el("div", { class: "field-full" });
+            w.appendChild(el("label", {}, ["Extra effects (JSON array, optional)"]));
+            const ta = el("textarea", {
+              class: "mono apply-mob-effects-extra",
+              rows: "3",
+              spellcheck: "false",
+              placeholder: '[{"effect":"minecraft:mining_fatigue","amplifier":0,"duration_seconds":8}]',
+            });
+            w.appendChild(ta);
             return w;
           })(), true);
           break;
         case "remove_mob_effect":
           addField(mobEffectId(), true);
+          addField(el("p", { class: "hint field-full" }, [
+            "Optional: remove several — JSON array of ids, e.g. ",
+            el("span", { class: "mono" }, ['["minecraft:slowness","yourmod:custom"]']),
+            ".",
+          ]), true);
+          addField((() => {
+            const w = el("div", { class: "field-full" });
+            w.appendChild(el("label", {}, ["Extra ids to remove (JSON array, optional)"]));
+            const ta = el("textarea", {
+              class: "mono remove-mob-effects-extra",
+              rows: "2",
+              spellcheck: "false",
+              placeholder: '["minecraft:weakness","othermod:mark"]',
+            });
+            w.appendChild(ta);
+            return w;
+          })(), true);
           break;
         case "add_stat_modifier": {
           const w = el("div", { class: "field-full" });
@@ -3074,6 +3553,67 @@
         if (keyv === "__custom__") keyv = (custom && custom.value.trim()) || "";
         if (keyv) params.message_key = keyv;
       }
+      if (type === "apply_mob_effect") {
+        const extraTa = fieldsRoot.querySelector(".apply-mob-effects-extra");
+        let extraArr = [];
+        if (extraTa && extraTa.value.trim()) {
+          try {
+            extraArr = JSON.parse(extraTa.value);
+          } catch (e) {
+            throw new Error("Apply mob effect: extra effects must be valid JSON array — " + e.message);
+          }
+          if (!Array.isArray(extraArr)) {
+            throw new Error("Apply mob effect: extra effects must be a JSON array.");
+          }
+          for (const row of extraArr) {
+            if (!row || typeof row !== "object" || !row.effect) {
+              throw new Error('Apply mob effect: each extra entry needs an "effect" id.');
+            }
+          }
+        }
+        const primary = (params.effect || "").trim();
+        if (extraArr.length && primary) {
+          const first = {
+            effect: primary,
+            duration_seconds: params.duration_seconds,
+            amplifier: params.amplifier != null ? params.amplifier : 0,
+            show_icon: params.show_icon !== false,
+          };
+          params.effects = [first, ...extraArr];
+          delete params.effect;
+          delete params.duration_seconds;
+          delete params.amplifier;
+          delete params.show_icon;
+        } else if (extraArr.length && !primary) {
+          params.effects = extraArr;
+          delete params.effect;
+          delete params.duration_seconds;
+          delete params.amplifier;
+          delete params.show_icon;
+        }
+      }
+      if (type === "remove_mob_effect") {
+        const ex = fieldsRoot.querySelector(".remove-mob-effects-extra");
+        let extraIds = [];
+        if (ex && ex.value.trim()) {
+          try {
+            extraIds = JSON.parse(ex.value);
+          } catch (e) {
+            throw new Error("Remove mob effect: extra ids must be valid JSON array — " + e.message);
+          }
+          if (!Array.isArray(extraIds)) {
+            throw new Error("Remove mob effect: extra ids must be a JSON array.");
+          }
+        }
+        const primary = (params.effect || "").trim();
+        if (extraIds.length && primary) {
+          params.effects = [primary, ...extraIds.map((x) => String(x).trim()).filter(Boolean)];
+          delete params.effect;
+        } else if (extraIds.length && !primary) {
+          params.effects = extraIds.map((x) => String(x).trim()).filter(Boolean);
+          delete params.effect;
+        }
+      }
       return params;
     }
 
@@ -3082,7 +3622,19 @@
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
         const label = "Effect #" + (i + 1) + " (" + (STEP_LABELS[n.type] || n.type) + ")";
-        if (needsEffect.has(n.type) && !(n.params.effect && String(n.params.effect).trim())) {
+        if (n.type === "apply_mob_effect") {
+          const hasP = n.params.effect && String(n.params.effect).trim();
+          const hasL = Array.isArray(n.params.effects) && n.params.effects.length > 0;
+          if (!hasP && !hasL) {
+            throw new Error(label + ": enter a primary effect id, or only a JSON array in “Extra effects”, or both.");
+          }
+        } else if (n.type === "remove_mob_effect") {
+          const hasP = n.params.effect && String(n.params.effect).trim();
+          const hasL = Array.isArray(n.params.effects) && n.params.effects.length > 0;
+          if (!hasP && !hasL) {
+            throw new Error(label + ": enter an effect id to remove, or a JSON array in “Extra ids”, or both.");
+          }
+        } else if (needsEffect.has(n.type) && !(n.params.effect && String(n.params.effect).trim())) {
           throw new Error(label + ": enter an effect id (for example minecraft:strength).");
         }
         if (n.type === "heal_flat" && (n.params.amount === undefined || n.params.amount === "")) {
@@ -3452,27 +4004,24 @@
     }
 
     function appendTriggerEffects(exec) {
-      const effectId = gv("trg_effect_id");
-      if (!effectId) return;
-      const chance = Math.max(0, Math.min(1, gn("trg_chance", 1)));
-      const stacks = Math.max(1, Math.trunc(gn("trg_stacks", 1)));
-      const ref = { effect: effectId, chance, stacks };
-      const trgLvEl = document.getElementById("trg_effect_level");
-      const trgLvRaw = trgLvEl && String(trgLvEl.value || "").trim();
-      if (trgLvRaw !== "") {
-        const ti = Math.max(1, Math.trunc(Number(trgLvRaw)));
-        if (!Number.isNaN(ti)) ref.effect_level = ti;
-      }
+      const rows = collectTrgEffectRows().filter((r) => r.effect);
+      if (!rows.length) return;
       const out = {};
-      if (gbool("trg_on_cast")) out.on_cast = [{ ...ref }];
+      const firstRef = refFromTrgRow(rows[0]);
+      if (gbool("trg_on_cast")) out.on_cast = [{ ...firstRef }];
       if (gbool("trg_on_hit")) {
-        const onHitRef = { ...ref };
+        out.on_hit = rows.map((row) => {
+          const onHitRef = refFromTrgRow(row);
+          if (row.hit_self === false) onHitRef.hit_self = false;
+          if (row.hit_target === true) onHitRef.hit_target = true;
+          return onHitRef;
+        });
         const needFx = gv("trg_target_has_effect");
-        if (needFx) {
-          onHitRef.target_has_mob_effect = needFx;
+        if (needFx && out.on_hit[0]) {
+          out.on_hit[0].target_has_mob_effect = needFx;
         }
-        if (gbool("trg_target_geo_enabled")) {
-          onHitRef.target_steps = [{
+        if (gbool("trg_target_geo_enabled") && out.on_hit[0]) {
+          out.on_hit[0].target_steps = [{
             type: "spawn_geo_at_target_block",
             geo_model: gv("trg_target_geo_model") || "lost_essence:geo/ice_thorns.geo.json",
             geo_texture: gv("trg_target_geo_texture") || "lost_essence:textures/spells/ice_thorns.png",
@@ -3484,10 +4033,9 @@
             full_bright: gbool("trg_target_geo_full_bright"),
           }];
         }
-        out.on_hit = [onHitRef];
       }
-      if (gbool("trg_on_block")) out.on_block = [{ ...ref }];
-      if (gbool("trg_on_take_damage")) out.on_take_damage = [{ ...ref }];
+      if (gbool("trg_on_block")) out.on_block = [{ ...firstRef }];
+      if (gbool("trg_on_take_damage")) out.on_take_damage = [{ ...firstRef }];
       if (Object.keys(out).length) {
         exec.trigger_effects = out;
       }
@@ -3511,8 +4059,9 @@
 
     const UNIVERSAL_CHAIN_KEY = "lost_essence_builder_universal_chain";
     const UV_STAGE_OPTIONS = [
+      ["cast_presentation", "Cast presentation (swing / Player Animator / lock facing)"],
       ["melee_core", "Melee core (execution.type melee)"],
-      ["move_forward", "Move forward (caster_look_motion)"],
+      ["move_forward", "Move caster along look (caster_look_motion / Rush)"],
       ["cast_self_heal", "Self heal (flat/%max/stat*ratio)"],
       ["cast_sweep_attack_vfx", "Sweep attack VFX pulse"],
       ["on_cast_spell_projectile", "On-cast projectile"],
@@ -3526,6 +4075,198 @@
 
     function uvStageOptionsHtml() {
       return UV_STAGE_OPTIONS.map(([v, t]) => `<option value="${v}">${t}</option>`).join("");
+    }
+
+    /** summon_stats + nested summon mob_skill UI for cast_summon (appended after core fields; y_offset lives on the parent row). */
+    function summonOptionsFieldsHtml(p) {
+      const ss = p.summon_stats && typeof p.summon_stats === "object" ? p.summon_stats : {};
+      const hp = ss.health && typeof ss.health === "object" ? ss.health : {};
+      const atk = ss.attack && typeof ss.attack === "object" ? ss.attack : {};
+      const def = ss.defense && typeof ss.defense === "object" ? ss.defense : {};
+      const ma = ss.magic_attack && typeof ss.magic_attack === "object" ? ss.magic_attack : {};
+      const ms = ss.mob_skill && typeof ss.mob_skill === "object" ? ss.mob_skill : {};
+      const g = (o, k, d) => (o[k] != null ? o[k] : d);
+      const atkDt = String(g(atk, "damage_type", "physical")).toLowerCase() === "magic" ? "magic" : "physical";
+      const msOn = !!(ms.skill_id || ms.can_cast_skills);
+      return `<details class="summon-adv-details" style="margin-top:0.5rem" open><summary>Summon stats &amp; summon mob_skill (optional)</summary>
+        <p class="hint" style="margin:0.35rem 0 0">Matches server <span class="mono">cast_summon</span>: HP / attack / defense / extra magic attack from caster; optional <span class="mono">mob_skill</span> on the summon (<span class="mono">spell</span> only).</p>
+        <div class="row">
+          <div><label>summon_level</label><input class="summon-ss-lvl" type="number" value="${g(ss, "summon_level", "")}" min="1" step="1" placeholder="(vanilla)" /></div>
+          <div></div>
+        </div>
+        <p class="hint" style="margin:0.25rem 0 0">health</p>
+        <div class="row">
+          <div><label>health.flat</label><input class="summon-ss-hp-flat" type="number" value="${g(hp, "flat", "")}" step="0.5" placeholder="0" /></div>
+          <div><label>health.percent_of_caster_max_health</label><input class="summon-ss-hp-pct" type="number" value="${g(hp, "percent_of_caster_max_health", "")}" step="0.01" placeholder="0" /></div>
+        </div>
+        <p class="hint" style="margin:0.25rem 0 0">attack → LE melee (vanilla attribute + magic/phys mitigation tag)</p>
+        <div class="row">
+          <div><label>attack.damage_type</label><select class="summon-ss-atk-dt"><option value="physical"${atkDt === "magic" ? "" : " selected"}>physical</option><option value="magic"${atkDt === "magic" ? " selected" : ""}>magic</option></select></div>
+          <div><label>attack.percent_of_caster</label><input class="summon-ss-atk-pct" type="number" value="${g(atk, "percent_of_caster", "")}" step="0.01" placeholder="0" /></div>
+        </div>
+        <p class="hint" style="margin:0.25rem 0 0">defense</p>
+        <div class="row">
+          <div><label>defense.physical_flat</label><input class="summon-ss-d-pf" type="number" value="${g(def, "physical_flat", "")}" step="1" placeholder="" /></div>
+          <div><label>defense.magic_flat</label><input class="summon-ss-d-mf" type="number" value="${g(def, "magic_flat", "")}" step="1" placeholder="" /></div>
+        </div>
+        <div class="row">
+          <div><label>defense.physical_percent_of_caster</label><input class="summon-ss-d-pp" type="number" value="${g(def, "physical_percent_of_caster", "")}" step="0.01" placeholder="" /></div>
+          <div><label>defense.magic_percent_of_caster</label><input class="summon-ss-d-mp" type="number" value="${g(def, "magic_percent_of_caster", "")}" step="0.01" placeholder="" /></div>
+        </div>
+        <p class="hint" style="margin:0.25rem 0 0">magic_attack (adds to stored LE magic attack)</p>
+        <div class="row">
+          <div><label>magic_attack.flat</label><input class="summon-ss-ma-f" type="number" value="${g(ma, "flat", "")}" step="0.5" placeholder="" /></div>
+          <div><label>magic_attack.percent_of_caster_magic_attack</label><input class="summon-ss-ma-p" type="number" value="${g(ma, "percent_of_caster_magic_attack", "")}" step="0.01" placeholder="" /></div>
+        </div>
+        <div class="inline-check" style="margin-top:0.45rem"><input class="summon-ss-ms-en" type="checkbox" ${msOn ? "checked" : ""} /><label>summon mob_skill (periodic spell)</label></div>
+        <div class="summon-ss-ms-fields ${msOn ? "" : "hidden"}" style="margin-top:0.45rem">
+          <div class="inline-check"><input class="summon-ss-ms-can" type="checkbox" ${ms.can_cast_skills !== false ? "checked" : ""} /><label>can_cast_skills</label></div>
+          <label>skill_id</label><input class="summon-ss-ms-skillid mono" type="text" value="${String(g(ms, "skill_id", "")).replace(/"/g, "&quot;")}" placeholder="lost_essence:sorcerer/ice_thorns" />
+          <div class="row">
+            <div><label>skill_rank</label><input class="summon-ss-ms-rank" type="number" value="${g(ms, "skill_rank", 1)}" min="1" max="99" step="1" /></div>
+            <div><label>chance_of_casting</label><input class="summon-ss-ms-chance" type="number" value="${ms.chance_percent != null ? Number(ms.chance_percent) / 100 : g(ms, "chance_of_casting", 0.1)}" min="0" step="0.01" /></div>
+          </div>
+          <div class="row">
+            <div><label>cast_interval_ticks</label><input class="summon-ss-ms-int" type="number" value="${g(ms, "cast_interval_ticks", 20)}" min="1" step="1" /></div>
+            <div><label>cooldown_ticks</label><input class="summon-ss-ms-cd" type="number" value="${ms.cooldown_ticks != null ? ms.cooldown_ticks : (ms.cooldown_seconds != null ? Math.round(20 * Number(ms.cooldown_seconds)) : 40)}" min="0" step="1" /></div>
+          </div>
+        </div>
+        </details>`;
+    }
+
+    function wireSummonOptionsUi(host) {
+      const msEn = host && host.querySelector(".summon-ss-ms-en");
+      const msFld = host && host.querySelector(".summon-ss-ms-fields");
+      if (msEn && msFld) {
+        const sync = () => { msFld.classList.toggle("hidden", !msEn.checked); };
+        msEn.addEventListener("change", sync);
+        sync();
+      }
+    }
+
+    function readSummonStatsFromScopedRow(row) {
+      if (!row) return null;
+      const stats = {};
+      const sl = (row.querySelector(".summon-ss-lvl")?.value || "").trim();
+      if (sl) stats.summon_level = Math.max(1, parseInt(sl, 10) || 1);
+      const hf = (row.querySelector(".summon-ss-hp-flat")?.value || "").trim();
+      const hpm = (row.querySelector(".summon-ss-hp-pct")?.value || "").trim();
+      if (hf || hpm) {
+        stats.health = {};
+        if (hf) stats.health.flat = Number(hf);
+        if (hpm) stats.health.percent_of_caster_max_health = Number(hpm);
+      }
+      const atkPct = (row.querySelector(".summon-ss-atk-pct")?.value || "").trim();
+      if (atkPct) {
+        stats.attack = {
+          damage_type: (row.querySelector(".summon-ss-atk-dt")?.value || "physical") === "magic" ? "magic" : "physical",
+          percent_of_caster: Number(atkPct),
+        };
+      }
+      const dpf = (row.querySelector(".summon-ss-d-pf")?.value || "").trim();
+      const dmf = (row.querySelector(".summon-ss-d-mf")?.value || "").trim();
+      const dpp = (row.querySelector(".summon-ss-d-pp")?.value || "").trim();
+      const dmp = (row.querySelector(".summon-ss-d-mp")?.value || "").trim();
+      if (dpf || dmf || dpp || dmp) {
+        stats.defense = {};
+        if (dpf) stats.defense.physical_flat = Number(dpf);
+        if (dmf) stats.defense.magic_flat = Number(dmf);
+        if (dpp) stats.defense.physical_percent_of_caster = Number(dpp);
+        if (dmp) stats.defense.magic_percent_of_caster = Number(dmp);
+      }
+      const maf = (row.querySelector(".summon-ss-ma-f")?.value || "").trim();
+      const map = (row.querySelector(".summon-ss-ma-p")?.value || "").trim();
+      if (maf || map) {
+        stats.magic_attack = {};
+        if (maf) stats.magic_attack.flat = Number(maf);
+        if (map) stats.magic_attack.percent_of_caster_magic_attack = Number(map);
+      }
+      if (row.querySelector(".summon-ss-ms-en")?.checked) {
+        const sid = (row.querySelector(".summon-ss-ms-skillid")?.value || "").trim();
+        if (sid) {
+          stats.mob_skill = {
+            can_cast_skills: row.querySelector(".summon-ss-ms-can")?.checked !== false,
+            skill_id: sid,
+            skill_rank: Math.max(1, Math.min(99, parseInt(row.querySelector(".summon-ss-ms-rank")?.value || "1", 10) || 1)),
+            chance_of_casting: (() => {
+              const n = Number(row.querySelector(".summon-ss-ms-chance")?.value);
+              return Number.isFinite(n) ? n : 0.1;
+            })(),
+            cast_interval_ticks: Math.max(1, parseInt(row.querySelector(".summon-ss-ms-int")?.value || "20", 10) || 20),
+            cooldown_ticks: Math.max(0, parseInt(row.querySelector(".summon-ss-ms-cd")?.value || "40", 10) || 0),
+          };
+        }
+      }
+      return Object.keys(stats).length ? stats : null;
+    }
+
+    /** Populate optional summon_stats / mob_skill inputs under a .fx-fields or .uv-stage-fields host. */
+    function writeSummonStatsToScopedRow(row, stats) {
+      if (!row || !stats || typeof stats !== "object") return;
+      const q = (sel) => row.querySelector(sel);
+      const sl = stats.summon_level;
+      if (sl != null && q(".summon-ss-lvl")) q(".summon-ss-lvl").value = String(sl);
+      const hp = stats.health;
+      if (hp && typeof hp === "object") {
+        if (hp.flat != null && q(".summon-ss-hp-flat")) q(".summon-ss-hp-flat").value = String(hp.flat);
+        if (hp.percent_of_caster_max_health != null && q(".summon-ss-hp-pct")) q(".summon-ss-hp-pct").value = String(hp.percent_of_caster_max_health);
+      }
+      const atk = stats.attack;
+      if (atk && typeof atk === "object") {
+        if (q(".summon-ss-atk-dt")) q(".summon-ss-atk-dt").value = String(atk.damage_type || "physical").toLowerCase() === "magic" ? "magic" : "physical";
+        if (atk.percent_of_caster != null && q(".summon-ss-atk-pct")) q(".summon-ss-atk-pct").value = String(atk.percent_of_caster);
+      }
+      const def = stats.defense;
+      if (def && typeof def === "object") {
+        if (def.physical_flat != null && q(".summon-ss-d-pf")) q(".summon-ss-d-pf").value = String(def.physical_flat);
+        if (def.magic_flat != null && q(".summon-ss-d-mf")) q(".summon-ss-d-mf").value = String(def.magic_flat);
+        if (def.physical_percent_of_caster != null && q(".summon-ss-d-pp")) q(".summon-ss-d-pp").value = String(def.physical_percent_of_caster);
+        if (def.magic_percent_of_caster != null && q(".summon-ss-d-mp")) q(".summon-ss-d-mp").value = String(def.magic_percent_of_caster);
+      }
+      const ma = stats.magic_attack;
+      if (ma && typeof ma === "object") {
+        if (ma.flat != null && q(".summon-ss-ma-f")) q(".summon-ss-ma-f").value = String(ma.flat);
+        if (ma.percent_of_caster_magic_attack != null && q(".summon-ss-ma-p")) q(".summon-ss-ma-p").value = String(ma.percent_of_caster_magic_attack);
+      }
+      const ms = stats.mob_skill;
+      if (ms && typeof ms === "object" && q(".summon-ss-ms-en")) {
+        q(".summon-ss-ms-en").checked = !!(ms.skill_id || ms.can_cast_skills);
+        if (ms.skill_id != null && q(".summon-ss-ms-skillid")) q(".summon-ss-ms-skillid").value = String(ms.skill_id);
+        if (ms.skill_rank != null && q(".summon-ss-ms-rank")) q(".summon-ss-ms-rank").value = String(ms.skill_rank);
+        const ch = ms.chance_of_casting != null ? ms.chance_of_casting : (ms.chance_percent != null ? Number(ms.chance_percent) / 100 : 0.1);
+        if (q(".summon-ss-ms-chance")) q(".summon-ss-ms-chance").value = String(ch);
+        if (ms.cast_interval_ticks != null && q(".summon-ss-ms-int")) q(".summon-ss-ms-int").value = String(ms.cast_interval_ticks);
+        const cd = ms.cooldown_ticks != null ? ms.cooldown_ticks : (ms.cooldown_seconds != null ? Math.round(20 * Number(ms.cooldown_seconds)) : 40);
+        if (q(".summon-ss-ms-cd")) q(".summon-ss-ms-cd").value = String(cd);
+        if (q(".summon-ss-ms-can")) q(".summon-ss-ms-can").checked = ms.can_cast_skills !== false;
+      }
+      const host = row.querySelector(".fx-fields") || row.querySelector(".uv-stage-fields") || row;
+      const msEn = host.querySelector(".summon-ss-ms-en");
+      const msFld = host.querySelector(".summon-ss-ms-fields");
+      if (msEn && msFld) msFld.classList.toggle("hidden", !msEn.checked);
+    }
+
+    /** Build cast_summon object from universal/melee serialized params p (entity_type, count, flags, y_offset, summon_stats). */
+    function finalizeCastSummonFromSerializedP(p) {
+      const et = String(p.entity_type || "").trim();
+      if (!et) return null;
+      const o = {
+        entity_type: et,
+        count: Math.max(1, Math.min(32, Math.trunc(Number(p.count) || 1))),
+        radius: Math.max(0, Number(p.radius) || 2),
+      };
+      if (p.persist === true) o.persist = true;
+      const ds = Math.max(0, Number(p.despawn_after_seconds) || 0);
+      if (ds > 0) o.despawn_after_seconds = ds;
+      if (p.assist_owner === false) o.assist_owner = false;
+      if (p.despawn_when_skill_effect_ends === true) o.despawn_when_skill_effect_ends = true;
+      const yo = Number(p.y_offset);
+      if (Number.isFinite(yo) && Math.abs(yo) > 1e-9) o.y_offset = yo;
+      if (p.summon_stats && typeof p.summon_stats === "object") {
+        const ks = Object.keys(p.summon_stats);
+        if (ks.length) o.summon_stats = p.summon_stats;
+      }
+      return o;
     }
 
     function clearUniversalStages() {
@@ -3567,6 +4308,30 @@
         if (dm) dm.value = gtxt("delay_mode", gtxt("delay_seconds_between_hits_csv", "") ? "custom" : "uniform") === "custom" ? "custom" : "uniform";
         return;
       }
+      if (type === "cast_presentation") {
+        const ca0 = String(gtxt("cast_animation", "none")).trim().toLowerCase();
+        const caVal = ["swing_main", "swing_off", "swing_both", "none"].includes(ca0) ? ca0 : "none";
+        const paClip = String(gtxt("player_animation_clip", "")).trim();
+        const paPrio = Math.max(0, Math.trunc(gnum("player_animation_priority", 210)));
+        host.innerHTML = `<p class="hint" style="margin:0 0 0.35rem">Maps to <span class="mono">cast_animation</span>, <span class="mono">player_animation</span>, and optional <span class="mono">lock_model_rotation: false</span>. <strong>Immediate</strong> merges onto the root execution (cast start). For a <em>second</em> swing or Player Animator clip after melee or motion, set <strong>When</strong> to <span class="mono">delayed_ticks</span> and tune <span class="mono">delay_ticks</span> (writes a <span class="mono">cast_timed_actions</span> entry).</p>
+        <div class="row">
+          <div>
+            <label>cast_animation</label>
+            <select class="uv-cp-cast-anim">
+              <option value="none"${caVal === "none" ? " selected" : ""}>None</option>
+              <option value="swing_main"${caVal === "swing_main" ? " selected" : ""}>Swing main hand</option>
+              <option value="swing_off"${caVal === "swing_off" ? " selected" : ""}>Swing off hand</option>
+              <option value="swing_both"${caVal === "swing_both" ? " selected" : ""}>Swing both</option>
+            </select>
+          </div>
+          <div class="inline-check" style="align-self:end"><input class="uv-cp-lock" type="checkbox" ${gbool("lock_model_rotation", true) ? "checked" : ""} /><label>lock_model_rotation (uncheck to allow turning)</label></div>
+        </div>
+        <div class="row">
+          <div><label>Player Animator clip</label><input class="uv-cp-pa-clip mono" type="text" value="${paClip.replace(/"/g, "&quot;")}" placeholder="lost_essence:rush" /></div>
+          <div><label>PA priority</label><input class="uv-cp-pa-prio" type="number" value="${paPrio}" min="0" step="1" /></div>
+        </div>`;
+        return;
+      }
       if (type === "move_forward") {
         host.innerHTML = `<div class="row">
           <div><label>strength</label><input class="uv-mf-strength" type="number" value="${gnum("strength", 0.52)}" min="0" step="0.01" /></div>
@@ -3574,7 +4339,7 @@
         </div>
         <div class="row">
           <div><label>combine</label><select class="uv-mf-combine"><option value="add">add</option><option value="set">set</option></select></div>
-          <div><label>direction</label><select class="uv-mf-direction"><option value="forward">forward</option><option value="back">back (evade)</option></select></div>
+          <div><label>Along look</label><select class="uv-mf-direction"><option value="forward">Forward (Rush)</option><option value="back">Back (evade)</option></select></div>
         </div>
         <div class="row">
           <div class="inline-check"><input class="uv-mf-horiz" type="checkbox" ${gbool("horizontal_only", true) ? "checked" : ""} /><label>horizontal_only</label></div>
@@ -3629,6 +4394,7 @@
         return;
       }
       if (type === "cast_summon") {
+        const yo = p.y_offset != null ? Number(p.y_offset) : 0;
         host.innerHTML = `<div class="row">
           <div><label>entity_type</label><input class="uv-sum-type mono" type="text" value="${gtxt("entity_type", "minecraft:zombie")}" /></div>
           <div><label>count</label><input class="uv-sum-count" type="number" value="${Math.max(1, Math.trunc(gnum("count", 1)))}" min="1" max="32" step="1" /></div>
@@ -3638,9 +4404,16 @@
           <div><label>despawn_after_seconds</label><input class="uv-sum-despawn" type="number" value="${gnum("despawn_after_seconds", 0)}" min="0" step="0.5" /></div>
         </div>
         <div class="row">
+          <div><label>y_offset (spawn height)</label><input class="summon-y-offset" type="number" value="${Number.isFinite(yo) ? yo : 0}" step="0.1" /></div>
+          <div></div>
+        </div>
+        <div class="row">
           <div class="inline-check"><input class="uv-sum-persist" type="checkbox" ${gbool("persist", false) ? "checked" : ""} /><label>persist</label></div>
           <div class="inline-check"><input class="uv-sum-assist" type="checkbox" ${gbool("assist_owner", true) ? "checked" : ""} /><label>assist_owner</label></div>
-        </div>`;
+        </div>
+        <div class="inline-check" style="margin-top:0.35rem"><input class="uv-sum-bind-effect" type="checkbox" ${gbool("despawn_when_skill_effect_ends", false) ? "checked" : ""} /><label>despawn_when_skill_effect_ends (skill effect apply / procs only)</label></div>
+        <p class="hint" style="margin:0.25rem 0 0">When checked, summons are removed when this stage runs from a skill effect that ends (or is consumed). Use with <span class="mono">on_apply_steps</span> / damage procs, not standalone skill <span class="mono">cast_summon</span>. Works with <span class="mono">persist</span>.</p>` + summonOptionsFieldsHtml(p);
+        wireSummonOptionsUi(host);
         return;
       }
       if (type === "blink_look") {
@@ -3671,6 +4444,7 @@
           <div><label>effect id</label><input class="uv-trg-effect mono" type="text" value="${gtxt("effect", "")}" placeholder="lost_essence:defender_counterattack_focus" /></div>
           <div><label>effect_level (optional)</label><input class="uv-trg-level" type="number" value="${gtxt("effect_level", "")}" min="1" step="1" /></div>
         </div>
+        <div class="row field-full"><label>requires_learned_skill (optional)</label><input class="uv-trg-requires-skill mono" type="text" value="${gtxt("requires_learned_skill", "")}" placeholder="lost_essence:defender/counterattack_focus" /></div>
         <div class="row">
           <div><label>chance</label><input class="uv-trg-chance" type="number" value="${gnum("chance", 1)}" min="0" max="1" step="0.01" /></div>
           <div><label>stacks</label><input class="uv-trg-stacks" type="number" value="${Math.max(1, Math.trunc(gnum("stacks", 1)))}" min="1" step="1" /></div>
@@ -3682,7 +4456,22 @@
         <div class="row">
           <div class="inline-check"><input class="uv-trg-on-block" type="checkbox" ${gbool("on_block", false) ? "checked" : ""} /><label>on_block</label></div>
           <div class="inline-check"><input class="uv-trg-on-take-dmg" type="checkbox" ${gbool("on_take_damage", false) ? "checked" : ""} /><label>on_take_damage</label></div>
+        </div>
+        <div class="uv-trg-hit-apply-wrap ${gbool("on_hit", false) ? "" : "hidden"}" style="margin-top:0.35rem">
+          <span class="hint" style="margin-right:0.45rem">on_hit → <span class="mono">skill_effects</span> on:</span>
+          <div class="inline-check"><input class="uv-trg-hit-self" type="checkbox" ${gbool("hit_self", true) ? "checked" : ""} /><label>self</label></div>
+          <div class="inline-check"><input class="uv-trg-hit-target" type="checkbox" ${gbool("hit_target", false) ? "checked" : ""} /><label>target</label></div>
         </div>`;
+        (function wireUvHitRow() {
+          const onHitEl = host.querySelector(".uv-trg-on-hit");
+          const wrap = host.querySelector(".uv-trg-hit-apply-wrap");
+          const sync = () => {
+            if (!wrap) return;
+            wrap.classList.toggle("hidden", !onHitEl || !onHitEl.checked);
+          };
+          if (onHitEl) onHitEl.addEventListener("change", sync);
+          sync();
+        })();
         return;
       }
       if (type === "raw_execution_merge") {
@@ -3704,13 +4493,14 @@
         <div><label>Timing</label><select class="uv-stage-when"><option value="immediate">immediate</option><option value="delayed_ticks">delayed_ticks</option></select></div>
         <div><label>delay_ticks</label><input type="number" class="uv-stage-delay" min="0" step="1" value="${Math.max(0, Math.trunc(Number((pref && pref.delay_ticks) || 0)))}" /></div>
       </div>
+      <p class="hint uv-stage-delay-hint" style="margin:0.2rem 0 0;line-height:1.45"><strong>delay_ticks</strong> is scheduled from <em>cast start</em> (same moment as wind-up). At 20 TPS, multiply seconds by <span class="mono">20</span> (e.g. <span class="mono">0.5</span> s → <span class="mono">10</span> ticks). If the skill has <span class="mono">casting_time_seconds</span>, real damage/melee usually happens after the channel — add about <span class="mono">⌈casting_time_seconds × 20⌉</span> so a follow-up anim lines up with hits.</p>
       <div class="row">
         <div><label>Label (optional)</label><input type="text" class="uv-stage-label mono" value="${((pref && pref.label) || "")}" placeholder="e.g. opener / branch A" /></div>
         <div class="step-actions" style="align-self:end">
           <button type="button" class="ghost uv-stage-up">↑</button>
           <button type="button" class="ghost uv-stage-down">↓</button>
           <button type="button" class="ghost uv-stage-dup">Duplicate</button>
-          <button type="button" class="ghost uv-stage-remove">Remove</button>
+          <button type="button" class="ghost uv-stage-remove">Remove stage</button>
         </div>
       </div>
       <div class="uv-stage-fields"></div>`;
@@ -3725,10 +4515,20 @@
         });
       }
       const whenSel = row.querySelector(".uv-stage-when");
+      const delayHintEl = row.querySelector(".uv-stage-delay-hint");
+      const syncDelayHint = () => {
+        if (!delayHintEl) return;
+        const delayed = whenSel && whenSel.value === "delayed_ticks";
+        delayHintEl.classList.toggle("hidden", !delayed);
+      };
       if (whenSel) {
         const w = String((pref && pref.when) || "immediate");
         whenSel.value = w === "delayed_ticks" ? "delayed_ticks" : "immediate";
-        whenSel.addEventListener("change", updateUniversalWarnings);
+        whenSel.addEventListener("change", () => {
+          syncDelayHint();
+          updateUniversalWarnings();
+        });
+        syncDelayHint();
       }
       row.querySelector(".uv-stage-delay")?.addEventListener("input", updateUniversalWarnings);
       row.querySelector(".uv-stage-branch")?.addEventListener("input", updateUniversalWarnings);
@@ -3773,6 +4573,11 @@
         p.delay_mode = dmode;
         p.delay_seconds_per_followup_hit = Number(row.querySelector(".uv-melee-delay-uniform")?.value || 0.0125);
         p.delay_seconds_between_hits_csv = (row.querySelector(".uv-melee-delay-custom")?.value || "").trim();
+      } else if (t === "cast_presentation") {
+        p.cast_animation = (row.querySelector(".uv-cp-cast-anim")?.value || "none").trim();
+        p.player_animation_clip = (row.querySelector(".uv-cp-pa-clip")?.value || "").trim();
+        p.player_animation_priority = Math.max(0, Math.trunc(Number(row.querySelector(".uv-cp-pa-prio")?.value || 210)));
+        p.lock_model_rotation = !!row.querySelector(".uv-cp-lock")?.checked;
       } else if (t === "move_forward") {
         p.strength = Number(row.querySelector(".uv-mf-strength")?.value || 0.52);
         p.delay_resolve_ticks = Math.max(0, Math.trunc(Number(row.querySelector(".uv-mf-delay")?.value || 5)));
@@ -3800,6 +4605,11 @@
         p.despawn_after_seconds = Math.max(0, Number(row.querySelector(".uv-sum-despawn")?.value || 0));
         p.persist = !!row.querySelector(".uv-sum-persist")?.checked;
         p.assist_owner = !!row.querySelector(".uv-sum-assist")?.checked;
+        if (row.querySelector(".uv-sum-bind-effect")?.checked) p.despawn_when_skill_effect_ends = true;
+        const yo = Number(row.querySelector(".summon-y-offset")?.value || 0);
+        if (Number.isFinite(yo) && Math.abs(yo) > 1e-9) p.y_offset = yo;
+        const ss = readSummonStatsFromScopedRow(row);
+        if (ss) p.summon_stats = ss;
       } else if (t === "blink_look") {
         p.max_distance = Math.max(0.25, Number(row.querySelector(".uv-blink-max")?.value || 8));
         p.min_travel = Math.max(0, Number(row.querySelector(".uv-blink-min")?.value || 0.12));
@@ -3815,12 +4625,15 @@
       } else if (t === "trigger_effects") {
         p.effect = (row.querySelector(".uv-trg-effect")?.value || "").trim();
         p.effect_level = (row.querySelector(".uv-trg-level")?.value || "").trim();
+        p.requires_learned_skill = (row.querySelector(".uv-trg-requires-skill")?.value || "").trim();
         p.chance = Math.max(0, Math.min(1, Number(row.querySelector(".uv-trg-chance")?.value || 1)));
         p.stacks = Math.max(1, Math.trunc(Number(row.querySelector(".uv-trg-stacks")?.value || 1)));
         p.on_cast = !!row.querySelector(".uv-trg-on-cast")?.checked;
         p.on_hit = !!row.querySelector(".uv-trg-on-hit")?.checked;
         p.on_block = !!row.querySelector(".uv-trg-on-block")?.checked;
         p.on_take_damage = !!row.querySelector(".uv-trg-on-take-dmg")?.checked;
+        p.hit_self = row.querySelector(".uv-trg-hit-self") ? !!row.querySelector(".uv-trg-hit-self").checked : true;
+        p.hit_target = !!row.querySelector(".uv-trg-hit-target")?.checked;
       } else if (t === "raw_execution_merge") {
         p.json = (row.querySelector(".uv-raw-merge")?.value || "").trim() || "{}";
       }
@@ -3847,9 +4660,10 @@
       /** Stage types that compile delayed ticks into cast_timed_actions entries (separate slots, not root key overwrites). */
       const DELAYED_CAST_TIMED_ACTION_TYPES = new Set([
         "move_forward", "cast_self_heal", "cast_sweep_attack_vfx", "blink_look", "cast_taunt",
-        "on_cast_spell_projectile", "cast_summon", "raw_execution_merge",
+        "on_cast_spell_projectile", "cast_summon", "cast_presentation", "raw_execution_merge",
       ]);
       const names = {
+        cast_presentation: ["cast_animation", "player_animation", "lock_model_rotation"],
         melee_core: ["type", "reach", "damage_ratio_each", "damage_stat", "hit_count", "delay_seconds_per_followup_hit|delay_seconds_between_hits"],
         move_forward: ["caster_look_motion"],
         cast_self_heal: ["cast_self_heal"],
@@ -3901,7 +4715,7 @@
         const when = s && s.when ? String(s.when).trim() : "immediate";
         const delayTicks = Math.max(0, Math.trunc(Number(s && s.delay_ticks != null ? s.delay_ticks : 0) || 0));
         if (!t) return;
-        if (when === "delayed_ticks" && ["move_forward", "cast_self_heal", "cast_sweep_attack_vfx", "blink_look", "cast_taunt", "on_cast_spell_projectile", "cast_summon", "raw_execution_merge"].includes(t)) {
+        if (when === "delayed_ticks" && ["move_forward", "cast_self_heal", "cast_sweep_attack_vfx", "blink_look", "cast_taunt", "on_cast_spell_projectile", "cast_summon", "cast_presentation", "raw_execution_merge"].includes(t)) {
           const action = { delay_ticks: delayTicks };
           if (t === "move_forward") {
             const str = Number(p.strength);
@@ -3951,17 +4765,22 @@
               projectile_speed: Math.max(0.05, Number(p.projectile_speed) || 1.15),
             };
           } else if (t === "cast_summon") {
-            const et = String(p.entity_type || "").trim();
-            if (!et) return;
-            action.cast_summon = {
-              entity_type: et,
-              count: Math.max(1, Math.min(32, Math.trunc(Number(p.count) || 1))),
-              radius: Math.max(0, Number(p.radius) || 2),
-            };
-            if (p.persist === true) action.cast_summon.persist = true;
-            const ds = Math.max(0, Number(p.despawn_after_seconds) || 0);
-            if (ds > 0) action.cast_summon.despawn_after_seconds = ds;
-            if (p.assist_owner === false) action.cast_summon.assist_owner = false;
+            const cs = finalizeCastSummonFromSerializedP(p);
+            if (cs) action.cast_summon = cs;
+          } else if (t === "cast_presentation") {
+            const ca = String(p.cast_animation || "none").trim().toLowerCase();
+            const clip = String(p.player_animation_clip || "").trim();
+            if ((!ca || ca === "none") && !clip && p.lock_model_rotation !== false) {
+              return;
+            }
+            if (ca && ca !== "none") action.cast_animation = ca;
+            if (clip) {
+              action.player_animation = {
+                animation: clip,
+                priority: Math.max(0, Math.trunc(Number(p.player_animation_priority) || 210)),
+              };
+            }
+            if (p.lock_model_rotation === false) action.lock_model_rotation = false;
           } else if (t === "raw_execution_merge") {
             const raw = String(p.json || "").trim();
             if (!raw) return;
@@ -3974,6 +4793,19 @@
           }
           if (!execution.cast_timed_actions) execution.cast_timed_actions = [];
           execution.cast_timed_actions.push(action);
+          return;
+        }
+        if (t === "cast_presentation") {
+          const ca = String(p.cast_animation || "none").trim().toLowerCase();
+          if (ca && ca !== "none") execution.cast_animation = ca;
+          const clip = String(p.player_animation_clip || "").trim();
+          if (clip) {
+            execution.player_animation = {
+              animation: clip,
+              priority: Math.max(0, Math.trunc(Number(p.player_animation_priority) || 210)),
+            };
+          }
+          if (p.lock_model_rotation === false) execution.lock_model_rotation = false;
           return;
         }
         if (t === "melee_core") {
@@ -4039,17 +4871,8 @@
           return;
         }
         if (t === "cast_summon") {
-          const et = String(p.entity_type || "").trim();
-          if (!et) return;
-          execution.cast_summon = {
-            entity_type: et,
-            count: Math.max(1, Math.min(32, Math.trunc(Number(p.count) || 1))),
-            radius: Math.max(0, Number(p.radius) || 2),
-          };
-          if (p.persist === true) execution.cast_summon.persist = true;
-          const ds = Math.max(0, Number(p.despawn_after_seconds) || 0);
-          if (ds > 0) execution.cast_summon.despawn_after_seconds = ds;
-          if (p.assist_owner === false) execution.cast_summon.assist_owner = false;
+          const cs = finalizeCastSummonFromSerializedP(p);
+          if (cs) execution.cast_summon = cs;
           return;
         }
         if (t === "blink_look") {
@@ -4086,9 +4909,16 @@
             const lv = Math.max(1, Math.trunc(Number(lvRaw) || 1));
             ref.effect_level = lv;
           }
+          const reqSkill = String(p.requires_learned_skill || "").trim();
+          if (reqSkill) ref.requires_learned_skill = reqSkill;
           const te = {};
           if (p.on_cast !== false) te.on_cast = [{ ...ref }];
-          if (p.on_hit === true) te.on_hit = [{ ...ref }];
+          if (p.on_hit === true) {
+            const hitRef = { ...ref };
+            if (p.hit_self === false) hitRef.hit_self = false;
+            if (p.hit_target === true) hitRef.hit_target = true;
+            te.on_hit = [hitRef];
+          }
           if (p.on_block === true) te.on_block = [{ ...ref }];
           if (p.on_take_damage === true) te.on_take_damage = [{ ...ref }];
           if (Object.keys(te).length) execution.trigger_effects = te;
@@ -4134,6 +4964,34 @@
         }
       }
       if (!ex || typeof ex !== "object") return;
+      (function importCastPresentationFromEx() {
+        const ca = ex.cast_animation;
+        const pa = ex.player_animation;
+        const lock = ex.lock_model_rotation;
+        const hasCa = ca != null && String(ca).trim() !== "" && String(ca).trim().toLowerCase() !== "none";
+        let clip = "";
+        let prio = 210;
+        if (pa && typeof pa === "object") {
+          clip = String(pa.animation || pa.id || "").trim();
+          if (pa.priority != null && Number.isFinite(Number(pa.priority))) {
+            prio = Math.max(0, Math.trunc(Number(pa.priority)));
+          }
+        } else if (ex.player_cast_animation != null && String(ex.player_cast_animation).trim() !== "") {
+          clip = String(ex.player_cast_animation).trim();
+          if (ex.player_cast_animation_priority != null && Number.isFinite(Number(ex.player_cast_animation_priority))) {
+            prio = Math.max(0, Math.trunc(Number(ex.player_cast_animation_priority)));
+          }
+        }
+        const hasPa = !!clip;
+        const hasLockFalse = lock === false;
+        if (!hasCa && !hasPa && !hasLockFalse) return;
+        addUniversalStageRow("cast_presentation", {
+          cast_animation: hasCa ? String(ca).trim().toLowerCase() : "none",
+          player_animation_clip: clip,
+          player_animation_priority: prio,
+          lock_model_rotation: lock !== false,
+        });
+      })();
       if (String(ex.type || "").trim().toLowerCase() === "melee") {
         addUniversalStageRow("melee_core", {
           reach: ex.reach,
@@ -4165,15 +5023,30 @@
           .map((k) => (Array.isArray(te[k]) ? te[k][0] : null))
           .find((x) => x && typeof x === "object");
         if (first && first.effect != null) {
+          const onHit0 = Array.isArray(te.on_hit) && te.on_hit[0] && typeof te.on_hit[0] === "object" ? te.on_hit[0] : null;
+          let uvHitSelf = true;
+          let uvHitTgt = false;
+          if (onHit0) {
+            if (onHit0.hit_self != null) uvHitSelf = !!onHit0.hit_self;
+            if (onHit0.hit_target != null) uvHitTgt = !!onHit0.hit_target;
+            if (onHit0.hit_self == null && onHit0.hit_target == null && onHit0.apply_to != null
+                && String(onHit0.apply_to).toLowerCase() === "target") {
+              uvHitSelf = false;
+              uvHitTgt = true;
+            }
+          }
           addUniversalStageRow("trigger_effects", {
             effect: first.effect,
             effect_level: first.effect_level != null ? String(first.effect_level) : "",
+            requires_learned_skill: first.requires_learned_skill != null ? String(first.requires_learned_skill) : "",
             chance: first.chance != null ? first.chance : 1,
             stacks: first.stacks != null ? first.stacks : 1,
             on_cast: Array.isArray(te.on_cast) && te.on_cast.length > 0,
             on_hit: Array.isArray(te.on_hit) && te.on_hit.length > 0,
             on_block: Array.isArray(te.on_block) && te.on_block.length > 0,
             on_take_damage: Array.isArray(te.on_take_damage) && te.on_take_damage.length > 0,
+            hit_self: uvHitSelf,
+            hit_target: uvHitTgt,
           });
         }
       }
@@ -4202,13 +5075,36 @@
           if (a.cast_summon && typeof a.cast_summon === "object") {
             addUniversalStageRow("cast_summon", { ...a.cast_summon, ...prefDelay });
           }
+          const caRaw = a.cast_animation != null ? String(a.cast_animation).trim() : "";
+          const caNorm = caRaw.toLowerCase();
+          const paObj = a.player_animation && typeof a.player_animation === "object" ? a.player_animation : null;
+          const legClip = a.player_cast_animation != null ? String(a.player_cast_animation).trim() : "";
+          const clipFromPa = paObj ? String(paObj.animation || paObj.id || "").trim() : "";
+          const clip = clipFromPa || legClip;
+          const prio = paObj && paObj.priority != null
+            ? Math.max(0, Math.trunc(Number(paObj.priority)))
+            : (a.player_cast_animation_priority != null ? Math.max(0, Math.trunc(Number(a.player_cast_animation_priority))) : 210);
+          const hasPresTimed =
+            (caRaw && caNorm !== "none") ||
+            !!clip ||
+            a.lock_model_rotation === false;
+          if (hasPresTimed) {
+            addUniversalStageRow("cast_presentation", {
+              when: "delayed_ticks",
+              delay_ticks: a.delay_ticks != null ? Number(a.delay_ticks) : 0,
+              cast_animation: caRaw && caNorm !== "none" ? caNorm : "none",
+              player_animation_clip: clip,
+              player_animation_priority: prio,
+              lock_model_rotation: a.lock_model_rotation !== false,
+            });
+          }
         });
       }
       updateUniversalWarnings();
     }
 
     const MELEE_EXTRA_OPTIONS = [
-      ["move_forward", "Move player forward (caster_look_motion / Rush)"],
+      ["move_forward", "Move caster along look (forward or back / Rush)"],
       ["cast_self_heal", "Cast self heal"],
       ["cast_sweep_attack_vfx", "Sweep attack VFX pulse"],
       ["blink_look", "Blink forward on cast"],
@@ -4253,6 +5149,10 @@
           <div class="inline-check"><input class="melee-extra-horizontal-only" type="checkbox" ${getBool("horizontal_only", true) ? "checked" : ""} /><label>horizontal_only</label></div>
         </div>
         <div class="row">
+          <div><label>Along look</label><select class="melee-extra-direction"><option value="forward">Forward (Rush)</option><option value="back">Back (evade)</option></select></div>
+          <div></div>
+        </div>
+        <div class="row">
           <div><label>sound (optional)</label><input class="melee-extra-sound mono" type="text" value="${getText("sound", "minecraft:entity.player.attack.sweep")}" /></div>
           <div class="row" style="grid-template-columns:1fr 1fr;gap:0.5rem">
             <div><label>sound_volume</label><input class="melee-extra-sound-vol" type="number" value="${getNum("sound_volume", 0.4)}" min="0" step="0.05" /></div>
@@ -4265,6 +5165,11 @@
         </div>`;
         const combineSel = host.querySelector(".melee-extra-combine");
         if (combineSel) combineSel.value = getText("combine", "add");
+        const dirSel = host.querySelector(".melee-extra-direction");
+        if (dirSel) {
+          const d = getText("direction", "forward").toLowerCase();
+          dirSel.value = d === "back" || d === "backward" ? "back" : "forward";
+        }
         return;
       }
       if (type === "cast_self_heal") {
@@ -4321,6 +5226,7 @@
         return;
       }
       if (type === "cast_summon") {
+        const yoM = p.y_offset != null ? Number(p.y_offset) : 0;
         host.innerHTML = `<div class="row">
           <div><label>entity_type</label><input class="melee-extra-summon-type mono" type="text" value="${getText("entity_type", "minecraft:zombie")}" /></div>
           <div><label>count</label><input class="melee-extra-summon-count" type="number" value="${Math.max(1, Math.trunc(getNum("count", 1)))}" min="1" max="32" step="1" /></div>
@@ -4330,9 +5236,15 @@
           <div><label>despawn_after_seconds (0 = none)</label><input class="melee-extra-summon-despawn" type="number" value="${getNum("despawn_after_seconds", 0)}" min="0" step="0.5" /></div>
         </div>
         <div class="row">
+          <div><label>y_offset (spawn height)</label><input class="summon-y-offset" type="number" value="${Number.isFinite(yoM) ? yoM : 0}" step="0.1" /></div>
+          <div></div>
+        </div>
+        <div class="row">
           <div class="inline-check"><input class="melee-extra-summon-persist" type="checkbox" ${getBool("persist", false) ? "checked" : ""} /><label>persist</label></div>
           <div class="inline-check"><input class="melee-extra-summon-assist" type="checkbox" ${getBool("assist_owner", true) ? "checked" : ""} /><label>assist_owner</label></div>
-        </div>`;
+        </div>
+        <div class="inline-check" style="margin-top:0.35rem"><input class="melee-extra-summon-bind-effect" type="checkbox" ${getBool("despawn_when_skill_effect_ends", false) ? "checked" : ""} /><label>despawn_when_skill_effect_ends (skill effect apply / procs only)</label></div>` + summonOptionsFieldsHtml(p);
+        wireSummonOptionsUi(host);
         return;
       }
       if (type === "cancel_channel_on_damage") {
@@ -4385,6 +5297,8 @@
             combine: (row.querySelector(".melee-extra-combine")?.value || "add") === "set" ? "set" : "add",
             delay_resolve_ticks: Math.max(0, Math.trunc(Number(row.querySelector(".melee-extra-delay-ticks")?.value || 5))),
           };
+          const dirRaw = (row.querySelector(".melee-extra-direction")?.value || "forward").trim().toLowerCase();
+          if (dirRaw === "back" || dirRaw === "backward") o.direction = "back";
           const snd = (row.querySelector(".melee-extra-sound")?.value || "").trim();
           if (snd) {
             o.sound = snd;
@@ -4450,15 +5364,21 @@
         if (t === "cast_summon") {
           const et = (row.querySelector(".melee-extra-summon-type")?.value || "").trim();
           if (!et) return;
-          execution.cast_summon = {
+          const p = {
             entity_type: et,
             count: Math.max(1, Math.min(32, Math.trunc(Number(row.querySelector(".melee-extra-summon-count")?.value || 1)))),
             radius: Math.max(0, Number(row.querySelector(".melee-extra-summon-radius")?.value || 2)),
+            despawn_after_seconds: Math.max(0, Number(row.querySelector(".melee-extra-summon-despawn")?.value || 0)),
           };
-          if (row.querySelector(".melee-extra-summon-persist")?.checked) execution.cast_summon.persist = true;
-          const dSec = Math.max(0, Number(row.querySelector(".melee-extra-summon-despawn")?.value || 0));
-          if (dSec > 0) execution.cast_summon.despawn_after_seconds = dSec;
-          if (!row.querySelector(".melee-extra-summon-assist")?.checked) execution.cast_summon.assist_owner = false;
+          if (row.querySelector(".melee-extra-summon-persist")?.checked) p.persist = true;
+          if (!row.querySelector(".melee-extra-summon-assist")?.checked) p.assist_owner = false;
+          if (row.querySelector(".melee-extra-summon-bind-effect")?.checked) p.despawn_when_skill_effect_ends = true;
+          const yo = Number(row.querySelector(".summon-y-offset")?.value || 0);
+          if (Number.isFinite(yo) && Math.abs(yo) > 1e-9) p.y_offset = yo;
+          const ss = readSummonStatsFromScopedRow(row);
+          if (ss) p.summon_stats = ss;
+          const cs = finalizeCastSummonFromSerializedP(p);
+          if (cs) execution.cast_summon = cs;
           return;
         }
         if (t === "cancel_channel_on_damage") {
@@ -4672,9 +5592,6 @@
     }
 
     function appendExecutionCastWindup(exec) {
-      if (skillMode.value === "effect") {
-        return;
-      }
       const ctEl = document.getElementById("exec_casting_time");
       const ct = ctEl ? Math.max(0, Number(ctEl.value) || 0) : 0;
       if (ct <= 1e-6) {
@@ -4704,11 +5621,18 @@
       const rpart = document.getElementById("exec_cast_repeat_particles");
       const ext = String(ex.type || "").trim().toLowerCase();
       if (ext === "buff") {
-        if (ct) ct.value = "0";
-        if (rep) rep.value = "0";
-        if (lockEl) lockEl.checked = true;
-        if (rpart) rpart.checked = false;
-        return;
+        const hasExplicitWindup =
+          (ex.casting_time_seconds != null && Number(ex.casting_time_seconds) > 0) ||
+          (ex.cast_repeat_interval_seconds != null && Number(ex.cast_repeat_interval_seconds) > 0) ||
+          ex.cast_lock_movement === false ||
+          ex.cast_repeat_particles === true;
+        if (!hasExplicitWindup) {
+          if (ct) ct.value = "0";
+          if (rep) rep.value = "0";
+          if (lockEl) lockEl.checked = true;
+          if (rpart) rpart.checked = false;
+          return;
+        }
       }
       if (ct) ct.value = ex.casting_time_seconds != null ? String(ex.casting_time_seconds) : "0";
       if (rep) rep.value = ex.cast_repeat_interval_seconds != null ? String(ex.cast_repeat_interval_seconds) : "0";
@@ -5501,7 +6425,7 @@
         "MMORPG (Mine and Slash–style JSON) → Lost Essence mapping (v1, best-effort)",
         "",
         "Roots",
-        " • identifier / id → suggested skill_id: lost_essence:imported/<sanitized>",
+        " • identifier / id → suggested skill_actions.skill_id: lost_essence:imported/<sanitized> (skill_nodes.skill_action_id same string)",
         " • config.cooldown_ticks ÷ 20 → cooldown_seconds",
         " • config.cast_time_ticks ÷ 20 → execution.casting_time_seconds",
         " • config.mana_cost.min → mana_cost",
@@ -5512,7 +6436,7 @@
         " • projectile → execution.type spell, spell_mode projectile; map.proj_count → placement_count; proj_apart → fan spread (inaccuracy)",
         " • summon_at_sight / summon_block → spell ground, ground_anchor look (impact / comet-style zone)",
         " • tp_target_to_self on on_cast only → Universal blink + melee; on entity_components only → vacuum → ground_pull_*",
-        " • push (only act) → Universal: move_forward direction back + sweep",
+        " • push (only act) → Universal: move caster along look (back) + sweep",
         " • tags area + damage (no projectile) → short forward ground pulse line",
         "",
         "Not 1:1",
@@ -5666,7 +6590,7 @@
       }
 
       if (actTypesUnique.length === 1 && actTypesUnique[0] === "push") {
-        notes.push("Mapped push → Universal backward move_forward + sweep.");
+        notes.push("Mapped push → Universal move caster back + sweep.");
         const chain = [
           stageT("move_forward", {
             strength: 0.52, horizontal_only: true, combine: "add", delay_resolve_ticks: 5, direction: "back",
@@ -5886,7 +6810,7 @@
       }
 
       if (has("push") && actTypesUnique.length > 1) {
-        notes.push("Also has push — consider adding Universal move_forward (back) or timed motion.");
+        notes.push("Also has push — consider adding Universal “move caster along look” (back) or timed motion.");
       }
 
       if (castingTime > 0) execution.casting_time_seconds = castingTime;
@@ -6170,7 +7094,7 @@
       document.getElementById("stamina").value = "6";
       document.getElementById("mana").value = "0";
       document.getElementById("cooldown").value = "12";
-      msg.textContent = "MMORPG backflip-style: backward caster_look_motion + sweep VFX (uses direction: back).";
+      msg.textContent = "MMORPG backflip-style: move caster along look (back) + sweep VFX.";
       msg.className = "ok";
     }
 
@@ -6222,7 +7146,7 @@
         }
       }
       const skill_id = document.querySelector("#skill_id").value.trim();
-      if (!skill_id) throw new Error("Please enter a skill id.");
+      if (!skill_id) throw new Error("Please enter skill_id (skill_actions); tree nodes use skill_action_id with the same string.");
       const stamina = Math.max(0, Number(document.querySelector("#stamina").value) || 0);
       const mana = Math.max(0, Number(document.querySelector("#mana").value) || 0);
       const cooldown = Math.max(0, Number(document.querySelector("#cooldown").value) || 0);
@@ -6264,6 +7188,7 @@
         if (!stages.length) throw new Error("Universal mode: add at least one stage.");
         const execution = {};
         applyUniversalStagesToExecution(execution, stages);
+        appendExecutionCastWindup(execution);
         doc.execution = execution;
         doc[UNIVERSAL_CHAIN_KEY] = stages;
       } else if (mode === "melee_chain") {
@@ -6333,6 +7258,9 @@
       if (!row.querySelector(".fx-proc-assist")?.checked) {
         o.assist_owner = false;
       }
+      if (row.querySelector(".fx-proc-bind-effect")?.checked) {
+        o.despawn_when_skill_effect_ends = true;
+      }
       return o;
     }
 
@@ -6366,6 +7294,7 @@
         procDespawn: obj.despawn_after_seconds != null ? Number(obj.despawn_after_seconds) : "",
         procPersist: !!obj.persist,
         procAssist: obj.assist_owner !== false,
+        procBindEffect: !!obj.despawn_when_skill_effect_ends,
       };
     }
 
@@ -6423,8 +7352,12 @@
         o.durationSeconds = Number(row.querySelector(".fx-duration-seconds") && row.querySelector(".fx-duration-seconds").value) || 10;
         o.amplifier = Math.max(0, Math.trunc(Number(row.querySelector(".fx-amplifier") && row.querySelector(".fx-amplifier").value) || 0));
         o.showIcon = (row.querySelector(".fx-show-icon") && row.querySelector(".fx-show-icon").value) === "true";
+        const mex = row.querySelector(".fx-mob-effects-extra");
+        o.mobEffectsExtra = mex ? String(mex.value || "") : "";
       } else if (type === "remove_mob_effect") {
         o.effectId = (row.querySelector(".fx-effect-id") && row.querySelector(".fx-effect-id").value) || "";
+        const rmx = row.querySelector(".fx-remove-mob-effects-extra");
+        o.removeMobEffectsExtra = rmx ? String(rmx.value || "") : "";
       } else if (type === "play_sound") {
         o.sound = (row.querySelector(".fx-sound-id") && row.querySelector(".fx-sound-id").value) || "";
         o.vol = Number(row.querySelector(".fx-sound-vol") && row.querySelector(".fx-sound-vol").value) || 0.8;
@@ -6442,6 +7375,20 @@
         o.procDespawn = ds === "" || ds === undefined ? "" : Number(ds);
         o.procPersist = !!(row.querySelector(".fx-proc-persist") && row.querySelector(".fx-proc-persist").checked);
         o.procAssist = !row.querySelector(".fx-proc-assist") || row.querySelector(".fx-proc-assist").checked;
+        o.procBindEffect = !!(row.querySelector(".fx-proc-bind-effect") && row.querySelector(".fx-proc-bind-effect").checked);
+      } else if (type === "cast_summon") {
+        o.castSmEntity = (row.querySelector(".fx-sum-type") && row.querySelector(".fx-sum-type").value) || "";
+        o.castSmCount = Math.max(1, Math.trunc(Number(row.querySelector(".fx-sum-count") && row.querySelector(".fx-sum-count").value) || 1));
+        o.castSmRadius = Number(row.querySelector(".fx-sum-radius") && row.querySelector(".fx-sum-radius").value) || 2;
+        const yo = row.querySelector(".fx-sum-y-offset") && row.querySelector(".fx-sum-y-offset").value;
+        o.castSmYOffset = yo === "" || yo === undefined ? 0 : Number(yo);
+        const ds = row.querySelector(".fx-sum-despawn") && row.querySelector(".fx-sum-despawn").value;
+        o.castSmDespawn = ds === "" || ds === undefined ? "" : Number(ds);
+        o.castSmPersist = !!(row.querySelector(".fx-sum-persist") && row.querySelector(".fx-sum-persist").checked);
+        o.castSmAssist = !row.querySelector(".fx-sum-assist") || row.querySelector(".fx-sum-assist").checked;
+        o.castSmBind = !!(row.querySelector(".fx-sum-bind-effect") && row.querySelector(".fx-sum-bind-effect").checked);
+        const ss = readSummonStatsFromScopedRow(row);
+        if (ss) o.summonStats = ss;
       } else if (type === "actionbar_message") {
         o.message = (row.querySelector(".fx-msg") && row.querySelector(".fx-msg").value) || "";
       }
@@ -6475,14 +7422,48 @@
             roundEachPulse: s.roundEachPulse === true,
           });
         } else if (t === "apply_mob_effect") {
-          setRowForTemplate(row, s.phase, t, {
+          let mobApplyExtra = s.mobEffectsExtra != null ? String(s.mobEffectsExtra) : null;
+          let vals = {
             effectId: s.effectId,
             durationSeconds: s.durationSeconds,
             amplifier: s.amplifier,
             showIcon: s.showIcon !== false,
-          });
+          };
+          if (Array.isArray(s.effects) && s.effects.length && !(s.effectId && String(s.effectId).trim())) {
+            const [first, ...rest] = s.effects;
+            if (first && typeof first === "object") {
+              vals = {
+                effectId: first.effect != null ? String(first.effect) : "",
+                durationSeconds: first.duration_seconds != null ? Number(first.duration_seconds) : s.durationSeconds,
+                amplifier: first.amplifier != null ? Math.max(0, Math.trunc(Number(first.amplifier))) : s.amplifier,
+                showIcon: first.show_icon !== false,
+              };
+              mobApplyExtra = rest.length ? JSON.stringify(rest, null, 2) : "";
+            }
+          } else if (Array.isArray(s.effects) && s.effects.length > 1 && s.effectId && String(s.effectId).trim()) {
+            mobApplyExtra = JSON.stringify(s.effects.slice(1), null, 2);
+          }
+          if (mobApplyExtra != null) vals.mobEffectsExtra = mobApplyExtra;
+          setRowForTemplate(row, s.phase, t, vals);
         } else if (t === "remove_mob_effect") {
-          setRowForTemplate(row, s.phase, t, { effectId: s.effectId });
+          let mobRemoveExtra = s.removeMobEffectsExtra != null ? String(s.removeMobEffectsExtra) : null;
+          let vals = { effectId: s.effectId };
+          if (Array.isArray(s.effects) && s.effects.length) {
+            const toStr = (x) => {
+              if (typeof x === "string") return x.trim();
+              if (x && typeof x === "object" && x.effect != null) return String(x.effect).trim();
+              return "";
+            };
+            const ids = s.effects.map(toStr).filter(Boolean);
+            if (!(s.effectId && String(s.effectId).trim()) && ids.length) {
+              vals = { effectId: ids[0] };
+              mobRemoveExtra = ids.length > 1 ? JSON.stringify(ids.slice(1), null, 2) : "";
+            } else if (s.effectId && String(s.effectId).trim() && ids.length) {
+              mobRemoveExtra = JSON.stringify(ids, null, 2);
+            }
+          }
+          if (mobRemoveExtra != null) vals.removeMobEffectsExtra = mobRemoveExtra;
+          setRowForTemplate(row, s.phase, t, vals);
         } else if (t === "play_sound") {
           setRowForTemplate(row, s.phase, t, { sound: s.sound });
           if (s.vol != null && row.querySelector(".fx-sound-vol")) row.querySelector(".fx-sound-vol").value = String(s.vol);
@@ -6498,6 +7479,19 @@
             procDespawn: s.procDespawn != null && s.procDespawn !== "" ? s.procDespawn : "",
             procPersist: !!s.procPersist,
             procAssist: s.procAssist !== false,
+            procBindEffect: !!s.procBindEffect,
+          });
+        } else if (t === "cast_summon") {
+          setRowForTemplate(row, s.phase || "on_apply", t, {
+            castSmEntity: s.castSmEntity || "",
+            castSmCount: s.castSmCount != null ? s.castSmCount : 1,
+            castSmRadius: s.castSmRadius != null ? s.castSmRadius : 2,
+            castSmYOffset: s.castSmYOffset != null ? s.castSmYOffset : 0,
+            castSmDespawn: s.castSmDespawn != null && s.castSmDespawn !== "" ? s.castSmDespawn : "",
+            castSmPersist: !!s.castSmPersist,
+            castSmAssist: s.castSmAssist !== false,
+            castSmBind: !!s.castSmBind,
+            summonStats: s.summonStats || null,
           });
         } else if (t === "actionbar_message") {
           setRowForTemplate(row, s.phase, t, { message: s.message });
@@ -6516,6 +7510,7 @@
         maxStacks: Math.max(1, Math.trunc(gn("fx_max_stacks", 1))),
         refresh: gv("fx_refresh_policy") || "refresh",
         allowPlayerSkills: gbool("fx_allow_player_skills"),
+        stopPlayerMovement: gbool("fx_stop_player_movement"),
         skillAction: fxActiveEffectLevel >= 2
           ? ((document.getElementById("fx_level_skill_action") && document.getElementById("fx_level_skill_action").value) || "").trim()
           : "",
@@ -6540,6 +7535,7 @@
       setDomField("fx_max_stacks", snap.maxStacks);
       setDomField("fx_refresh_policy", snap.refresh || "refresh");
       setDomField("fx_allow_player_skills", !!snap.allowPlayerSkills, true);
+      setDomField("fx_stop_player_movement", !!snap.stopPlayerMovement, true);
       const sa = document.getElementById("fx_level_skill_action");
       if (sa) sa.value = level >= 2 ? (snap.skillAction || "") : "";
       deserializeEffectRows(getEffectRowSpecsForSnap(snap));
@@ -6554,7 +7550,10 @@
       const saRow = document.getElementById("fx_level_skill_action_row");
       const ban = document.getElementById("fx_level_banner");
       if (idBlock) idBlock.classList.toggle("hidden", fxActiveEffectLevel !== 1);
-      if (saRow) saRow.classList.toggle("hidden", fxActiveEffectLevel < 2);
+      if (saRow) {
+        const tabGear = document.getElementById("app_tab") && document.getElementById("app_tab").value === "gear_effect";
+        saRow.classList.toggle("hidden", tabGear || fxActiveEffectLevel < 2);
+      }
       if (ban) {
         const tail = fxActiveEffectLevel === 1
           ? " (root — identity + rules + steps)"
@@ -6663,6 +7662,7 @@
       if (Math.trunc(levSnap.maxStacks) !== Math.trunc(baseSnap.maxStacks)) p.max_stacks = Math.trunc(levSnap.maxStacks);
       if ((levSnap.refresh || "refresh") !== (baseSnap.refresh || "refresh")) p.refresh_policy = levSnap.refresh;
       if (!!levSnap.allowPlayerSkills !== !!baseSnap.allowPlayerSkills) p.allow_player_skills = !!levSnap.allowPlayerSkills;
+      if (!!levSnap.stopPlayerMovement !== !!baseSnap.stopPlayerMovement) p.stop_player_movement = !!levSnap.stopPlayerMovement;
       const g0 = baseSnap.grouped || { on_apply: [], while_active: [], on_expire: [] };
       const g1 = levSnap.grouped || { on_apply: [], while_active: [], on_expire: [] };
       if (jsonStable(g0.on_apply) !== jsonStable(g1.on_apply) && g1.on_apply.length) p.on_apply_steps = g1.on_apply;
@@ -6687,6 +7687,7 @@
       const maxStacks = Math.max(1, Math.trunc(snap.maxStacks));
       const refresh = snap.refresh || "refresh";
       const allowPlayerSkills = !!snap.allowPlayerSkills;
+      const stopPlayerMovement = !!snap.stopPlayerMovement;
       const grouped = snap.grouped || { on_apply: [], while_active: [], on_expire: [] };
       const doc = {
         id,
@@ -6696,6 +7697,7 @@
         allow_player_skills: allowPlayerSkills,
         refresh_policy: refresh,
       };
+      if (stopPlayerMovement) doc.stop_player_movement = true;
       if (icon) doc.display.icon = icon;
       if (desc) doc.display.description = desc;
       if (grouped.on_apply.length) doc.on_apply_steps = grouped.on_apply;
@@ -6724,11 +7726,273 @@
       return doc;
     }
 
+    /**
+     * Inverse of {@link collectEffectRowsAsStepArrays}: datapack step → row spec for {@link deserializeEffectRows}.
+     */
+    function datapackStepToRowSpec(phase, step) {
+      if (!step || typeof step !== "object") return null;
+      const t = String(step.type || "").trim();
+      if (t === "add_stat_modifier") {
+        const stat = String(step.stat || "").trim();
+        const amt = Number(step.amount);
+        if (!stat || !Number.isFinite(amt)) return null;
+        const op = String(step.operation || "multiply_total").trim().toLowerCase();
+        if (op === "add") {
+          return { phase, type: amt < 0 ? "dec_base_stat" : "inc_base_stat", stat, value: Math.abs(amt) };
+        }
+        const pct = Math.abs(amt) * 100;
+        return { phase, type: amt < 0 ? "dec_combat_stat" : "inc_combat_stat", stat, value: pct };
+      }
+      if (t === "heal_over_time" || t === "damage_over_time") {
+        const pct = step.percent_max_each != null ? Number(step.percent_max_each) * 100 : 0;
+        return {
+          phase,
+          type: t === "heal_over_time" ? "hot_percent_hp" : "dot_percent_hp",
+          percentEach: pct,
+          pulseCount: step.pulse_count != null ? Math.max(1, Math.trunc(Number(step.pulse_count))) : 5,
+          interval: step.interval_seconds != null ? Math.max(0.05, Number(step.interval_seconds)) : 1,
+          resource: step.resource || "health",
+          scaleStat: step.stat || "",
+          ratioEach: step.ratio_each != null ? Number(step.ratio_each) : 0,
+          roundEachPulse: !!step.round_each_pulse,
+        };
+      }
+      if (t === "apply_mob_effect") {
+        const eff = step.effect != null ? String(step.effect).trim() : "";
+        const ds = step.duration_seconds != null ? Number(step.duration_seconds) : 10;
+        const amp = step.amplifier != null ? Math.max(0, Math.trunc(Number(step.amplifier))) : 0;
+        const show = step.show_icon !== false;
+        if (Array.isArray(step.effects) && step.effects.length) {
+          const first = step.effects[0];
+          if (first && typeof first === "object") {
+            const vals = {
+              effectId: first.effect != null ? String(first.effect).trim() : eff,
+              durationSeconds: first.duration_seconds != null ? Number(first.duration_seconds) : ds,
+              amplifier: first.amplifier != null ? Math.max(0, Math.trunc(Number(first.amplifier))) : amp,
+              showIcon: first.show_icon !== false,
+            };
+            const extra = step.effects.slice(1);
+            const mobEffectsExtra = extra.length ? JSON.stringify(extra, null, 2) : "";
+            return { phase, type: "apply_mob_effect", ...vals, mobEffectsExtra };
+          }
+        }
+        return {
+          phase,
+          type: "apply_mob_effect",
+          effectId: eff,
+          durationSeconds: ds,
+          amplifier: amp,
+          showIcon: show,
+          mobEffectsExtra: "",
+        };
+      }
+      if (t === "remove_mob_effect") {
+        const eff = step.effect != null ? String(step.effect).trim() : "";
+        if (Array.isArray(step.effects) && step.effects.length) {
+          const ids = step.effects.map((x) => {
+            if (typeof x === "string") return x.trim();
+            if (x && typeof x === "object" && x.effect != null) return String(x.effect).trim();
+            return "";
+          }).filter(Boolean);
+          if (!eff && ids.length) {
+            return { phase, type: "remove_mob_effect", effectId: ids[0], removeMobEffectsExtra: ids.length > 1 ? JSON.stringify(ids.slice(1), null, 2) : "" };
+          }
+          if (eff && ids.length) {
+            return { phase, type: "remove_mob_effect", effectId: eff, removeMobEffectsExtra: JSON.stringify(ids, null, 2) };
+          }
+        }
+        if (eff) return { phase, type: "remove_mob_effect", effectId: eff, removeMobEffectsExtra: "" };
+        return null;
+      }
+      if (t === "play_sound") {
+        const sound = String(step.sound || "").trim();
+        if (!sound) return null;
+        return {
+          phase,
+          type: "play_sound",
+          sound,
+          vol: step.volume != null ? Number(step.volume) : 0.8,
+          pitch: step.pitch != null ? Number(step.pitch) : 1,
+        };
+      }
+      if (t === "cast_summon") {
+        const et = String(step.entity_type || "").trim();
+        if (!et) return null;
+        const o = {
+          phase,
+          type: "cast_summon",
+          castSmEntity: et,
+          castSmCount: step.count != null ? Math.max(1, Math.min(32, Math.trunc(Number(step.count)))) : 1,
+          castSmRadius: step.radius != null ? Number(step.radius) : 2,
+          castSmYOffset: step.y_offset != null ? Number(step.y_offset) : 0,
+          castSmDespawn: step.despawn_after_seconds != null ? Number(step.despawn_after_seconds) : "",
+          castSmPersist: !!step.persist,
+          castSmAssist: step.assist_owner !== false,
+          castSmBind: !!step.despawn_when_skill_effect_ends,
+          summonStats: step.summon_stats || null,
+        };
+        return o;
+      }
+      if (t === "actionbar_message") {
+        const message = String(step.key != null ? step.key : (step.message || "")).trim();
+        if (!message) return null;
+        return { phase, type: "actionbar_message", message };
+      }
+      return null;
+    }
+
+    function rebuildRowSpecsFromGroupedAndProcs(grouped, procTake, procDeal) {
+      const rows = [];
+      const phases = ["on_apply", "while_active", "on_expire"];
+      const g = grouped || { on_apply: [], while_active: [], on_expire: [] };
+      for (const phase of phases) {
+        for (const step of g[phase] || []) {
+          const spec = datapackStepToRowSpec(phase, step);
+          if (spec) rows.push(spec);
+        }
+      }
+      for (const obj of procTake || []) {
+        const spec = legacyProcObjectToRowSpec(true, obj);
+        if (spec) rows.push(spec);
+      }
+      for (const obj of procDeal || []) {
+        const spec = legacyProcObjectToRowSpec(false, obj);
+        if (spec) rows.push(spec);
+      }
+      return rows;
+    }
+
+    function snapFromEffectDocParts(levelDoc, rootDoc) {
+      const disp = rootDoc.display && typeof rootDoc.display === "object" ? rootDoc.display : {};
+      const idStr = String(rootDoc.id || "").trim();
+      const grouped = {
+        on_apply: Array.isArray(levelDoc.on_apply_steps) ? levelDoc.on_apply_steps : [],
+        while_active: Array.isArray(levelDoc.while_active_steps) ? levelDoc.while_active_steps : [],
+        on_expire: Array.isArray(levelDoc.on_expire_steps) ? levelDoc.on_expire_steps : [],
+      };
+      const procTake = levelDoc.while_active_proc_on_take_damage || [];
+      const procDeal = levelDoc.while_active_proc_on_deal_damage || [];
+      const rows = rebuildRowSpecsFromGroupedAndProcs(grouped, procTake, procDeal);
+      return {
+        name: disp.name || idStr || "",
+        icon: disp.icon || "",
+        desc: disp.description || "",
+        duration: levelDoc.duration_seconds != null ? Math.max(0.05, Number(levelDoc.duration_seconds)) : 10,
+        maxStacks: levelDoc.max_stacks != null ? Math.max(1, Math.trunc(Number(levelDoc.max_stacks))) : 1,
+        refresh: levelDoc.refresh_policy || "refresh",
+        allowPlayerSkills: levelDoc.allow_player_skills !== false,
+        stopPlayerMovement: !!levelDoc.stop_player_movement,
+        skillAction: "",
+        grouped,
+        procOnTakeDamage: [...procTake],
+        procOnDealDamage: [...procDeal],
+        rows,
+      };
+    }
+
+    function applyEffectImportPatch(baseSnap, patch) {
+      const merged = fxCloneSnap(baseSnap);
+      if (patch.skill_action != null) merged.skillAction = String(patch.skill_action).trim();
+      if (patch.duration_seconds != null) merged.duration = Math.max(0.05, Number(patch.duration_seconds));
+      if (patch.max_stacks != null) merged.maxStacks = Math.max(1, Math.trunc(Number(patch.max_stacks)));
+      if (patch.refresh_policy) merged.refresh = patch.refresh_policy;
+      if (patch.allow_player_skills != null) merged.allowPlayerSkills = !!patch.allow_player_skills;
+      if (patch.stop_player_movement != null) merged.stopPlayerMovement = !!patch.stop_player_movement;
+      const bg = baseSnap.grouped || { on_apply: [], while_active: [], on_expire: [] };
+      merged.grouped = {
+        on_apply: patch.on_apply_steps != null ? patch.on_apply_steps : [...(bg.on_apply || [])],
+        while_active: patch.while_active_steps != null ? patch.while_active_steps : [...(bg.while_active || [])],
+        on_expire: patch.on_expire_steps != null ? patch.on_expire_steps : [...(bg.on_expire || [])],
+      };
+      merged.procOnTakeDamage = patch.while_active_proc_on_take_damage != null
+        ? [...patch.while_active_proc_on_take_damage]
+        : [...(baseSnap.procOnTakeDamage || [])];
+      merged.procOnDealDamage = patch.while_active_proc_on_deal_damage != null
+        ? [...patch.while_active_proc_on_deal_damage]
+        : [...(baseSnap.procOnDealDamage || [])];
+      merged.rows = rebuildRowSpecsFromGroupedAndProcs(merged.grouped, merged.procOnTakeDamage, merged.procOnDealDamage);
+      return merged;
+    }
+
+    function importSkillEffectFromDoc(doc) {
+      if (!doc || typeof doc !== "object") throw new Error("Not a JSON object.");
+      const id = String(doc.id || "").trim();
+      if (!id) throw new Error("Skill effect JSON needs an \"id\" field.");
+      const tabEl = document.getElementById("app_tab");
+      if (tabEl.value !== "gear_effect") {
+        tabEl.value = "effect";
+      }
+      syncAppTab();
+      setDomField("fx_id", id);
+      const slug = id.includes(":") ? id.split(":").pop() : id;
+      setDomField("fx_filename", String(slug || "skill_effect").replace(/[^a-z0-9_.-]/gi, "_") + ".json");
+      fxEffectLevelSnapshots.clear();
+      fxActiveEffectLevel = 1;
+      const baseSnap = snapFromEffectDocParts(doc, doc);
+      fxEffectLevelSnapshots.set(1, baseSnap);
+      const lvObj = doc.levels && typeof doc.levels === "object" ? doc.levels : {};
+      const levNums = Object.keys(lvObj)
+        .map((k) => Math.max(2, Math.trunc(Number(k))))
+        .filter((n) => n >= 2 && Number.isFinite(n))
+        .sort((a, b) => a - b);
+      for (const n of levNums) {
+        const patch = lvObj[String(n)];
+        if (patch && typeof patch === "object") {
+          fxEffectLevelSnapshots.set(n, applyEffectImportPatch(baseSnap, patch));
+        }
+      }
+      const s1 = fxEffectLevelSnapshots.get(1);
+      if (s1) applyFxSnapshotToDom(s1, 1);
+      refreshFxLevelSelectUi();
+    }
+
+    function dispatchImportForActiveMode(doc) {
+      const mode = document.getElementById("app_tab").value;
+      if (mode === "skill") {
+        importSkillDocument(doc);
+        return;
+      }
+      if (mode === "passive_mastery") {
+        importPassiveMasteryFromDoc(doc);
+        return;
+      }
+      if (mode === "effect" || mode === "gear_effect") {
+        importSkillEffectFromDoc(doc);
+        return;
+      }
+      if (mode === "mob_affix") {
+        importMobAffixFromDoc(doc);
+        return;
+      }
+      if (mode === "gear_affix") {
+        importGearAffixFromDoc(doc);
+        return;
+      }
+      throw new Error("Unknown builder mode.");
+    }
+
     function makeOption(value, label) {
       const o = document.createElement("option");
       o.value = value;
       o.textContent = label;
       return o;
+    }
+
+    function rebuildFxPhaseSelectForRow(phaseSel, type) {
+      if (!phaseSel) return;
+      const prev = phaseSel.value;
+      phaseSel.innerHTML = "";
+      const opts = type === "cast_summon"
+        ? [["on_apply", "On apply"], ["on_expire", "On expire"]]
+        : FX_PHASE_OPTIONS;
+      for (const [v, l] of opts) {
+        phaseSel.appendChild(makeOption(v, l));
+      }
+      if ([...phaseSel.options].some(o => o.value === prev)) {
+        phaseSel.value = prev;
+      } else {
+        phaseSel.value = type === "cast_summon" ? "on_apply" : "while_active";
+      }
     }
 
     function updateHotDotPreview(row) {
@@ -6761,6 +8025,7 @@
     function renderEffectRowFields(row) {
       const type = row.querySelector(".fx-type").value;
       const phaseSel = row.querySelector(".fx-phase");
+      rebuildFxPhaseSelectForRow(phaseSel, type);
       if (phaseSel) {
         phaseSel.disabled = false;
       }
@@ -6820,6 +8085,29 @@
         updateHotDotPreview(row);
         return;
       }
+      if (type === "cast_summon") {
+        const p = {};
+        add(`<p class="hint field-full">Emits <span class="mono">cast_summon</span> in <span class="mono">on_apply_steps</span> or <span class="mono">on_expire_steps</span>. Tie pets to buff duration with <span class="mono">despawn_when_skill_effect_ends</span>. Skills must reference this effect (e.g. <span class="mono">execution.trigger_effects</span>).</p>
+        <div class="row">
+          <div><label>entity_type</label><input class="fx-sum-type mono" type="text" placeholder="minecraft:wolf" /></div>
+          <div><label>count</label><input class="fx-sum-count" type="number" value="1" min="1" max="32" step="1" /></div>
+        </div>
+        <div class="row">
+          <div><label>radius</label><input class="fx-sum-radius" type="number" value="2" min="0" step="0.5" /></div>
+          <div><label>despawn_after_seconds</label><input class="fx-sum-despawn" type="number" value="" min="0" step="0.5" placeholder="empty = none" /></div>
+        </div>
+        <div class="row">
+          <div><label>y_offset</label><input class="fx-sum-y-offset" type="number" value="0" step="0.1" /></div>
+          <div></div>
+        </div>
+        <div class="row">
+          <div class="inline-check"><input class="fx-sum-persist" type="checkbox" /><label>persist</label></div>
+          <div class="inline-check"><input class="fx-sum-assist" type="checkbox" checked /><label>assist_owner</label></div>
+        </div>
+        <div class="inline-check" style="margin-top:0.35rem"><input class="fx-sum-bind-effect" type="checkbox" /><label>despawn_when_skill_effect_ends</label></div>` + summonOptionsFieldsHtml(p));
+        wireSummonOptionsUi(host);
+        return;
+      }
       if (type === "apply_mob_effect") {
         add(`<div class="row">
           <div><label>Mob effect id</label><input class="fx-effect-id mono" type="text" value="minecraft:strength" /></div>
@@ -6828,11 +8116,15 @@
         <div class="row">
           <div><label>Amplifier</label><input class="fx-amplifier" type="number" value="0" min="0" step="1" /></div>
           <div><label>Show icon</label><select class="fx-show-icon"><option value="true">true</option><option value="false">false</option></select></div>
-        </div>`);
+        </div>
+        <p class="hint field-full" style="margin-top:0.35rem">Optional: more mob effects in one step — JSON array. Each object needs <span class="mono">"effect"</span> (full id, shorthand, or alias like <span class="mono">slow</span>). Per-entry <span class="mono">duration_seconds</span> / <span class="mono">amplifier</span> / <span class="mono">show_icon</span> override the row fields above for that entry only. Use <span class="mono">display.name</span> on this skill effect for your UI name.</p>
+        <div class="field-full"><label>Extra effects (JSON array, optional)</label><textarea class="mono fx-mob-effects-extra" rows="3" spellcheck="false" placeholder='[{"effect":"minecraft:mining_fatigue","amplifier":0,"duration_seconds":8}]'></textarea></div>`);
         return;
       }
       if (type === "remove_mob_effect") {
-        add(`<label>Mob effect id</label><input class="fx-effect-id mono" type="text" value="minecraft:strength" />`);
+        add(`<label>Mob effect id</label><input class="fx-effect-id mono" type="text" value="minecraft:strength" />
+        <p class="hint field-full" style="margin-top:0.35rem">Optional: remove several — JSON array of ids, e.g. <span class="mono">["minecraft:slowness","yourmod:custom"]</span>.</p>
+        <div class="field-full"><label>Extra ids to remove (JSON array, optional)</label><textarea class="mono fx-remove-mob-effects-extra" rows="2" spellcheck="false" placeholder='["minecraft:weakness","othermod:mark"]'></textarea></div>`);
         return;
       }
       if (type === "play_sound") {
@@ -6870,6 +8162,10 @@
         <div class="inline-check">
           <input type="checkbox" class="fx-proc-assist" checked />
           <label><span class="mono">assist_owner</span> (default on)</label>
+        </div>
+        <div class="inline-check">
+          <input type="checkbox" class="fx-proc-bind-effect" />
+          <label><span class="mono">despawn_when_skill_effect_ends</span> (remove summon when this effect ends)</label>
         </div>`);
         if (phaseSel) {
           phaseSel.value = "while_active";
@@ -6952,19 +8248,75 @@
           const rPulse = row.querySelector(".fx-round-each-pulse");
           if (rPulse && rPulse.checked) step.round_each_pulse = true;
         } else if (type === "apply_mob_effect") {
-          const effect = (row.querySelector(".fx-effect-id").value || "").trim();
-          if (!effect) return;
-          step = {
-            type: "apply_mob_effect",
-            effect,
-            duration_seconds: Math.max(0.05, Number(row.querySelector(".fx-duration-seconds").value) || 10),
-            amplifier: Math.max(0, Math.trunc(Number(row.querySelector(".fx-amplifier").value) || 0)),
-            show_icon: (row.querySelector(".fx-show-icon").value || "true") === "true",
-          };
+          const primary = (row.querySelector(".fx-effect-id").value || "").trim();
+          const extraTa = row.querySelector(".fx-mob-effects-extra");
+          let extraArr = [];
+          if (extraTa && extraTa.value.trim()) {
+            try {
+              extraArr = JSON.parse(extraTa.value);
+            } catch (e) {
+              throw new Error("Apply mob effect row: extra effects must be valid JSON array — " + e.message);
+            }
+            if (!Array.isArray(extraArr)) {
+              throw new Error("Apply mob effect row: extra effects must be a JSON array.");
+            }
+            for (const er of extraArr) {
+              if (!er || typeof er !== "object" || !er.effect) {
+                throw new Error('Apply mob effect row: each extra entry needs an "effect" id.');
+              }
+            }
+          }
+          const duration_seconds = Math.max(0.05, Number(row.querySelector(".fx-duration-seconds").value) || 10);
+          const amplifier = Math.max(0, Math.trunc(Number(row.querySelector(".fx-amplifier").value) || 0));
+          const show_icon = (row.querySelector(".fx-show-icon").value || "true") === "true";
+          if (extraArr.length && primary) {
+            step = {
+              type: "apply_mob_effect",
+              effects: [
+                { effect: primary, duration_seconds, amplifier, show_icon },
+                ...extraArr,
+              ],
+            };
+          } else if (extraArr.length && !primary) {
+            step = { type: "apply_mob_effect", effects: extraArr };
+          } else if (primary) {
+            step = {
+              type: "apply_mob_effect",
+              effect: primary,
+              duration_seconds,
+              amplifier,
+              show_icon,
+            };
+          }
         } else if (type === "remove_mob_effect") {
-          const effect = (row.querySelector(".fx-effect-id").value || "").trim();
-          if (!effect) return;
-          step = { type: "remove_mob_effect", effect };
+          const primary = (row.querySelector(".fx-effect-id").value || "").trim();
+          const ex = row.querySelector(".fx-remove-mob-effects-extra");
+          let extraIds = [];
+          if (ex && ex.value.trim()) {
+            try {
+              extraIds = JSON.parse(ex.value);
+            } catch (e) {
+              throw new Error("Remove mob effect row: extra ids must be valid JSON array — " + e.message);
+            }
+            if (!Array.isArray(extraIds)) {
+              throw new Error("Remove mob effect row: extra ids must be a JSON array.");
+            }
+          }
+          const idOne = (x) => {
+            if (typeof x === "string") return x.trim();
+            if (x && typeof x === "object" && x.effect != null) return String(x.effect).trim();
+            return "";
+          };
+          if (extraIds.length && primary) {
+            step = {
+              type: "remove_mob_effect",
+              effects: [primary, ...extraIds.map(idOne).filter(Boolean)],
+            };
+          } else if (extraIds.length && !primary) {
+            step = { type: "remove_mob_effect", effects: extraIds.map(idOne).filter(Boolean) };
+          } else if (primary) {
+            step = { type: "remove_mob_effect", effect: primary };
+          }
         } else if (type === "play_sound") {
           const sound = (row.querySelector(".fx-sound-id").value || "").trim();
           if (!sound) return;
@@ -6974,6 +8326,21 @@
             volume: Math.max(0, Number(row.querySelector(".fx-sound-vol").value) || 0.8),
             pitch: Math.max(0.05, Number(row.querySelector(".fx-sound-pitch").value) || 1),
           };
+        } else if (type === "cast_summon") {
+          const et = (row.querySelector(".fx-sum-type")?.value || "").trim();
+          if (!et) return;
+          step = { type: "cast_summon", entity_type: et };
+          step.count = Math.max(1, Math.min(32, Math.trunc(Number(row.querySelector(".fx-sum-count")?.value) || 1)));
+          step.radius = Math.max(0, Number(row.querySelector(".fx-sum-radius")?.value) || 2);
+          const dss = Number(row.querySelector(".fx-sum-despawn")?.value);
+          if (Number.isFinite(dss) && dss > 0) step.despawn_after_seconds = dss;
+          const yo = Number(row.querySelector(".fx-sum-y-offset")?.value);
+          if (Number.isFinite(yo) && Math.abs(yo) > 1e-9) step.y_offset = yo;
+          if (row.querySelector(".fx-sum-persist")?.checked) step.persist = true;
+          if (!row.querySelector(".fx-sum-assist")?.checked) step.assist_owner = false;
+          if (row.querySelector(".fx-sum-bind-effect")?.checked) step.despawn_when_skill_effect_ends = true;
+          const ss = readSummonStatsFromScopedRow(row);
+          if (ss) step.summon_stats = ss;
         } else if (type === "actionbar_message") {
           const message = (row.querySelector(".fx-msg").value || "").trim();
           if (!message) return;
@@ -7009,6 +8376,12 @@
       if (values.durationSeconds != null && row.querySelector(".fx-duration-seconds")) row.querySelector(".fx-duration-seconds").value = String(values.durationSeconds);
       if (values.amplifier != null && row.querySelector(".fx-amplifier")) row.querySelector(".fx-amplifier").value = String(values.amplifier);
       if (values.showIcon != null && row.querySelector(".fx-show-icon")) row.querySelector(".fx-show-icon").value = values.showIcon ? "true" : "false";
+      if (values.mobEffectsExtra != null && row.querySelector(".fx-mob-effects-extra")) {
+        row.querySelector(".fx-mob-effects-extra").value = String(values.mobEffectsExtra);
+      }
+      if (values.removeMobEffectsExtra != null && row.querySelector(".fx-remove-mob-effects-extra")) {
+        row.querySelector(".fx-remove-mob-effects-extra").value = String(values.removeMobEffectsExtra);
+      }
       if (values.sound != null && row.querySelector(".fx-sound-id")) row.querySelector(".fx-sound-id").value = values.sound;
       if (values.message != null && row.querySelector(".fx-msg")) row.querySelector(".fx-msg").value = values.message;
       if (values.procChanceMode != null && row.querySelector(".fx-proc-chance-mode")) {
@@ -7037,6 +8410,36 @@
       }
       if (values.procAssist != null && row.querySelector(".fx-proc-assist")) {
         row.querySelector(".fx-proc-assist").checked = !!values.procAssist;
+      }
+      if (values.procBindEffect != null && row.querySelector(".fx-proc-bind-effect")) {
+        row.querySelector(".fx-proc-bind-effect").checked = !!values.procBindEffect;
+      }
+      if (values.castSmEntity != null && row.querySelector(".fx-sum-type")) {
+        row.querySelector(".fx-sum-type").value = values.castSmEntity;
+      }
+      if (values.castSmCount != null && row.querySelector(".fx-sum-count")) {
+        row.querySelector(".fx-sum-count").value = String(values.castSmCount);
+      }
+      if (values.castSmRadius != null && row.querySelector(".fx-sum-radius")) {
+        row.querySelector(".fx-sum-radius").value = String(values.castSmRadius);
+      }
+      if (values.castSmYOffset != null && row.querySelector(".fx-sum-y-offset")) {
+        row.querySelector(".fx-sum-y-offset").value = String(values.castSmYOffset);
+      }
+      if (values.castSmDespawn !== undefined && row.querySelector(".fx-sum-despawn")) {
+        row.querySelector(".fx-sum-despawn").value = values.castSmDespawn === "" || values.castSmDespawn == null ? "" : String(values.castSmDespawn);
+      }
+      if (values.castSmPersist != null && row.querySelector(".fx-sum-persist")) {
+        row.querySelector(".fx-sum-persist").checked = !!values.castSmPersist;
+      }
+      if (values.castSmAssist != null && row.querySelector(".fx-sum-assist")) {
+        row.querySelector(".fx-sum-assist").checked = !!values.castSmAssist;
+      }
+      if (values.castSmBind != null && row.querySelector(".fx-sum-bind-effect")) {
+        row.querySelector(".fx-sum-bind-effect").checked = !!values.castSmBind;
+      }
+      if (values.summonStats && typeof values.summonStats === "object") {
+        writeSummonStatsToScopedRow(row, values.summonStats);
       }
       updateHotDotPreview(row);
     }
@@ -7182,10 +8585,111 @@
     });
     refreshLevelPackUi();
 
+    /**
+     * When in gear_effect mode, builds suggested gear_effect_sets rows from the proc panel (same ids as the game).
+     */
+    function fxSyncGearChanceJsonFromSimple() {
+      const advEl = document.getElementById("fx_gs_advanced_chance");
+      const ta = document.getElementById("fx_gs_chance_json");
+      const row = document.getElementById("fx_gs_simple_chance_row");
+      const adv = advEl && advEl.checked;
+      if (row) row.classList.toggle("hidden", !!adv);
+      const hi = document.getElementById("fx_gs_chance_json_hint");
+      if (hi) hi.textContent = adv ? "(manual edit)" : "(filled from % fields below)";
+      if (adv || !ta) return;
+      const base = Math.max(0, Math.min(100, Number(document.getElementById("fx_gs_trigger_chance_pct")?.value) || 0));
+      const bonus = Math.max(0, Math.min(100, Number(document.getElementById("fx_gs_chance_bonus_per_piece_pct")?.value) || 0));
+      const n = Math.max(1, Math.min(12, Math.trunc(Number(document.getElementById("fx_gs_max_piece_tier")?.value) || 5)));
+      const o = {};
+      for (let k = 1; k <= n; k++) {
+        const pPct = Math.min(100, base + (k - 1) * bonus);
+        o[String(k)] = Math.min(1, Math.max(0, pPct / 100));
+      }
+      ta.value = JSON.stringify(o, null, 2);
+    }
+
+    function buildGearEffectSetSnippetsFromUi() {
+      fxSyncGearChanceJsonFromSimple();
+      const checks = [
+        ["fx_gs_on_cast_magic", "on_cast_magic"],
+        ["fx_gs_on_cast_physical", "on_cast_physical"],
+        ["fx_gs_on_take_damage", "on_hit_taken"],
+        ["fx_gs_on_block", "on_block_taken"],
+        ["fx_gs_on_hit_dealt", "on_hit_dealt"],
+        ["fx_gs_on_melee_hit", "on_melee_hit_dealt"],
+      ];
+      const any = checks.some(([id]) => document.getElementById(id)?.checked);
+      if (!any) return { snippets: null, error: null };
+      const setId = (gv("fx_gs_set_id") || "").trim();
+      if (!setId) {
+        return { snippets: null, error: "Gear set procs: enter set_id, or uncheck all triggers." };
+      }
+      let chanceByPieces;
+      try {
+        chanceByPieces = JSON.parse((document.getElementById("fx_gs_chance_json") && document.getElementById("fx_gs_chance_json").value) || "{}");
+      } catch (err) {
+        return { snippets: null, error: "Gear set procs: chance_by_pieces must be valid JSON." };
+      }
+      if (!chanceByPieces || typeof chanceByPieces !== "object" || Array.isArray(chanceByPieces) || Object.keys(chanceByPieces).length === 0) {
+        return { snippets: null, error: "Gear set procs: chance_by_pieces needs at least one \"piece_count\": chance entry." };
+      }
+      const cd = Math.max(0, Math.trunc(gn("fx_gs_cooldown", 0)));
+      const applyRaw = (gv("fx_id") || "").trim();
+      if (!applyRaw) {
+        return { snippets: null, error: "Enter an effect id above before generating set bindings." };
+      }
+      const shortApply = applyRaw.includes(":") ? applyRaw.split(":").pop() : applyRaw;
+      const effectLevel = Math.max(1, Math.trunc(gn("fx_gs_effect_level", 1)));
+      const effectStacks = Math.max(1, Math.trunc(gn("fx_gs_effect_stacks", 1)));
+      const arr = [];
+      for (const [elId, trigger] of checks) {
+        if (!document.getElementById(elId)?.checked) continue;
+        arr.push({
+          set_id: setId,
+          trigger,
+          cooldown_sec: cd,
+          chance_by_pieces: chanceByPieces,
+          apply_gear_effect: shortApply,
+          effect_level: effectLevel,
+          effect_stacks: effectStacks,
+        });
+      }
+      return { snippets: arr, error: null };
+    }
+
     document.getElementById("fx_build").addEventListener("click", () => {
       try {
-        out.value = JSON.stringify(buildEffectDoc(), null, 2);
-        msg.textContent = "Effect JSON ready — you can copy or download.";
+        const doc = buildEffectDoc();
+        const tab = document.getElementById("app_tab").value;
+        if (tab === "gear_effect") {
+          delete doc.allow_player_skills;
+          delete doc.stop_player_movement;
+          delete doc.levels;
+        }
+        let text = JSON.stringify(doc, null, 2);
+        let gearSetCount = 0;
+        if (tab === "gear_effect") {
+          const { snippets, error } = buildGearEffectSetSnippetsFromUi();
+          if (error) {
+            msg.textContent = error;
+            msg.className = "err";
+            out.value = text;
+            return;
+          }
+          if (snippets && snippets.length) {
+            gearSetCount = snippets.length;
+            text += "\n\n/* === gear_effect_sets: save each object as data/<namespace>/gear_effect_sets/<unique_name>.json === */\n";
+            text += JSON.stringify(snippets, null, 2);
+          }
+        }
+        out.value = text;
+        if (tab === "gear_effect") {
+          msg.textContent = gearSetCount > 0
+            ? "Preview: gear_effects JSON + " + gearSetCount + " suggested gear_effect_sets binding(s). Split into separate files before installing."
+            : "Gear buff JSON ready. Add set proc checkboxes + set_id to also emit gear_effect_sets.";
+        } else {
+          msg.textContent = "Effect JSON ready — you can copy or download.";
+        }
         msg.className = "ok";
       } catch (e) {
         out.value = "";
@@ -7250,27 +8754,72 @@
 
     function syncAppTab() {
       const t = document.getElementById("app_tab").value;
-      const skillW = document.getElementById("skill_action_workspace");
+      const isEffectMode = t === "effect" || t === "gear_effect";
       const passiveW = document.getElementById("passive_mastery_workspace");
       const effectW = document.getElementById("effect_workspace");
+      if (effectW) effectW.classList.toggle("gear-effect-mode", t === "gear_effect");
+      const fxHero = document.getElementById("fx_workspace_hero");
+      if (fxHero) fxHero.textContent = t === "gear_effect" ? "Gear effect & set proc builder" : "Skill effect builder";
+      document.getElementById("fx_intro_skill")?.classList.toggle("hidden", t === "gear_effect");
+      document.getElementById("fx_intro_gear")?.classList.toggle("hidden", t !== "gear_effect");
+      document.querySelectorAll(".fx-gear-rules-extra").forEach((el) => el.classList.toggle("hidden", t !== "gear_effect"));
+      document.getElementById("fx_effects_hint_skill")?.classList.toggle("hidden", t === "gear_effect");
+      document.getElementById("fx_effects_hint_gear")?.classList.toggle("hidden", t !== "gear_effect");
+      document.getElementById("fx_skill_only_player_locks")?.classList.toggle("hidden", t === "gear_effect");
+      document.getElementById("fx_skill_only_effect_levels")?.classList.toggle("hidden", t === "gear_effect");
+      const idLab = document.getElementById("fx_label_fx_id");
+      const fnLab = document.getElementById("fx_label_fx_filename");
+      if (idLab) idLab.textContent = t === "gear_effect" ? "Gear effect id" : "Effect id";
+      if (fnLab) fnLab.textContent = t === "gear_effect" ? "File name (under gear_effects/)" : "File name when downloading";
+      const fxGearPanel = document.getElementById("fx_gear_proc_panel");
+      if (fxGearPanel) fxGearPanel.classList.toggle("hidden", t !== "gear_effect");
+      if (t === "gear_effect") {
+        fxSyncGearChanceJsonFromSimple();
+        persistFxEffectLevel();
+        if (fxActiveEffectLevel !== 1) {
+          fxActiveEffectLevel = 1;
+          const s1 = fxEffectLevelSnapshots.get(1);
+          if (s1) applyFxSnapshotToDom(s1, 1);
+          refreshFxLevelSelectUi();
+        }
+      }
+      if (typeof updateFxLevelChrome === "function") updateFxLevelChrome();
+      const mobAffixW = document.getElementById("mob_affix_workspace");
       const so = document.getElementById("skill_output_actions");
       const slp = document.getElementById("skill_level_pack");
       const eo = document.getElementById("effect_output_actions");
       const po = document.getElementById("passive_output_actions");
-      if (skillW) skillW.classList.toggle("hidden", t !== "skill");
+      const mao = document.getElementById("mob_affix_output_actions");
+      document.querySelectorAll(".skill-action-builder-chunk").forEach((el) => {
+        el.classList.toggle("hidden", t !== "skill");
+      });
+      const trgPanel = document.getElementById("sec-triggers");
+      if (trgPanel) trgPanel.classList.toggle("hidden", t !== "skill" && t !== "passive_mastery");
       if (passiveW) passiveW.classList.toggle("hidden", t !== "passive_mastery");
-      if (effectW) effectW.classList.toggle("hidden", t !== "effect");
+      if (effectW) effectW.classList.toggle("hidden", !isEffectMode);
+      if (mobAffixW) mobAffixW.classList.toggle("hidden", t !== "mob_affix");
       if (so) so.classList.toggle("hidden", t !== "skill");
       if (slp) slp.classList.toggle("hidden", t !== "skill");
-      if (eo) eo.classList.toggle("hidden", t !== "effect");
+      if (eo) eo.classList.toggle("hidden", !isEffectMode);
       if (po) po.classList.toggle("hidden", t !== "passive_mastery");
-      if (t === "effect") {
+      if (mao) mao.classList.toggle("hidden", t !== "mob_affix");
+      const gfaW = document.getElementById("gear_affix_workspace");
+      const gfaO = document.getElementById("gear_affix_output_actions");
+      if (gfaW) gfaW.classList.toggle("hidden", t !== "gear_affix");
+      if (gfaO) gfaO.classList.toggle("hidden", t !== "gear_affix");
+      if (isEffectMode) {
         if (fxEffectLevelSnapshots.size === 0) fxInitEffectLevelStateFromDom();
         else refreshFxLevelSelectUi();
       }
     }
 
     document.getElementById("app_tab").addEventListener("change", syncAppTab);
+    const fxGsAdv = document.getElementById("fx_gs_advanced_chance");
+    if (fxGsAdv) fxGsAdv.addEventListener("change", () => fxSyncGearChanceJsonFromSimple());
+    ["fx_gs_trigger_chance_pct", "fx_gs_chance_bonus_per_piece_pct", "fx_gs_max_piece_tier"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("input", () => fxSyncGearChanceJsonFromSimple());
+    });
 
     const PM_ALL_STAT_IDS = [
       "lost_essence:strength",
@@ -7499,11 +9048,12 @@
       const incR = !!(document.getElementById("pm_include_reflect") && document.getElementById("pm_include_reflect").checked);
       const incS = !!(document.getElementById("pm_include_stats") && document.getElementById("pm_include_stats").checked);
       const incM = !!(document.getElementById("pm_include_mastery") && document.getElementById("pm_include_mastery").checked);
-      if (!incR && !incS && !incM) {
-        throw new Error("Enable at least one passive feature: reflect, stat modifiers, and/or mastery.");
+      const incT = !!(document.getElementById("pm_include_triggers") && document.getElementById("pm_include_triggers").checked);
+      if (!incR && !incS && !incM && !incT) {
+        throw new Error("Enable at least one passive feature: reflect, stat modifiers, mastery, and/or trigger effects.");
       }
       const skill_id = (document.getElementById("pm_skill_id").value || "").trim();
-      if (!skill_id) throw new Error("Enter skill_id.");
+      if (!skill_id) throw new Error("Enter skill_id (skill_actions); match skill_nodes.skill_action_id to this string.");
       const ex = { type: "passive" };
       if (incM) {
         const prefs = (document.getElementById("pm_gear_prefixes").value || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -7529,6 +9079,9 @@
         if (w) {
           ex.passive_mainhand_weapon_types = w.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
         }
+      }
+      if (incT) {
+        appendTriggerEffects(ex);
       }
       appendPassiveMainhandGearTypesToExecution(ex);
       const doc = {
@@ -7623,9 +9176,11 @@
       const hasGearInEx = Array.isArray(gearInEx) && gearInEx.length > 0;
       const hasClassInEx = ex.class_mastery === true;
       const hasMastery = hasGearInEx || hasClassInEx;
+      const hasTriggerEffects = ex.trigger_effects && typeof ex.trigger_effects === "object" && Object.keys(ex.trigger_effects).length > 0;
       setDomField("pm_include_reflect", hasReflect, true);
       setDomField("pm_include_stats", hasStats, true);
       setDomField("pm_include_mastery", hasMastery, true);
+      setDomField("pm_include_triggers", hasTriggerEffects, true);
       syncPassiveMasteryBlocks();
       clearPmStatRows();
       clearPmReflectRows();
@@ -7696,11 +9251,12 @@
         const gtcy = document.getElementById("pm_gear_types_csv");
         if (gtcy) gtcy.value = "";
       }
+      importTriggerEffectsFromExecution(hasTriggerEffects ? ex : {});
     }
 
     document.getElementById("pm_add_stat_row")?.addEventListener("click", () => addPmStatRow());
     document.getElementById("pm_add_reflect_row")?.addEventListener("click", () => addPmReflectRow());
-    ["pm_include_reflect", "pm_include_stats", "pm_include_mastery"].forEach((id) => {
+    ["pm_include_reflect", "pm_include_stats", "pm_include_mastery", "pm_include_triggers"].forEach((id) => {
       document.getElementById(id)?.addEventListener("change", () => {
         syncPassiveMasteryBlocks();
         ensureStatModifiersRowsIfNeeded();
@@ -7763,6 +9319,424 @@
       reader.readAsText(f, "UTF-8");
     });
 
+    function syncMaMobSkillBlock() {
+      const on = document.getElementById("ma_enable_mob_skill")?.checked;
+      const block = document.getElementById("ma_mob_skill_fields");
+      if (block) block.classList.toggle("hidden", !on);
+    }
+    document.getElementById("ma_enable_mob_skill")?.addEventListener("change", syncMaMobSkillBlock);
+    syncMaMobSkillBlock();
+
+    const GF_STAT_OPTIONS = [
+      ["strength", "strength"],
+      ["agility", "agility"],
+      ["intelligence", "intelligence"],
+      ["vitality", "vitality"],
+      ["max_health", "max_health"],
+      ["max_mana", "max_mana"],
+      ["max_stamina", "max_stamina"],
+      ["physical_attack", "physical_attack"],
+      ["magic_attack", "magic_attack"],
+      ["physical_defense", "physical_defense"],
+      ["magic_defense", "magic_defense"],
+      ["physical_critical", "physical_critical"],
+      ["magic_critical", "magic_critical"],
+      ["bonus_physical_damage", "bonus_physical_damage"],
+      ["bonus_magic_damage", "bonus_magic_damage"],
+      ["more_damage", "more_damage"],
+      ["health_regen", "health_regen"],
+      ["mana_regen", "mana_regen"],
+      ["stamina_regen", "stamina_regen"],
+      ["movement_speed_bonus", "movement_speed_bonus"],
+    ];
+
+    function gfStatSelectHtml(selected) {
+      let h = "";
+      for (const [v, lab] of GF_STAT_OPTIONS) {
+        h += `<option value="${v}"${selected === v ? " selected" : ""}>${lab}</option>`;
+      }
+      return h;
+    }
+
+    function gfAddBandRow(container, pre) {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.style.marginTop = "0.35rem";
+      row.innerHTML = `
+        <div><label>min_lvl</label><input type="number" class="gf-band-minlvl" min="0" step="1" value="${pre && pre.min_lvl != null ? pre.min_lvl : 28}" /></div>
+        <div><label>min</label><input type="number" class="gf-band-min" step="any" value="${pre && pre.min != null ? pre.min : 0}" /></div>
+        <div><label>max</label><input type="number" class="gf-band-max" step="any" value="${pre && pre.max != null ? pre.max : 0}" /></div>
+        <div style="align-self:end"><button type="button" class="ghost gf-band-remove" style="margin-top:1.1rem">Remove</button></div>`;
+      row.querySelector(".gf-band-remove").addEventListener("click", () => row.remove());
+      container.appendChild(row);
+    }
+
+    function gfAddStatRow(pref) {
+      const wrap = document.getElementById("gf_stat_rows");
+      if (!wrap) return;
+      const row = document.createElement("div");
+      row.className = "step-card";
+      row.style.marginTop = "0.5rem";
+      const statId = pref && pref.stat ? String(pref.stat).replace(/^lost_essence:/, "") : "physical_defense";
+      const typ = pref && pref.type ? String(pref.type).toUpperCase() : "FLAT";
+      const mn = pref && pref.min != null ? pref.min : 0;
+      const mx = pref && pref.max != null ? pref.max : 10;
+      row.innerHTML = `
+        <div class="step-head">
+          <select class="gf-stat-id" style="margin-top:0">${gfStatSelectHtml(statId)}</select>
+          <button type="button" class="ghost gf-stat-remove" style="margin-top:0">Remove line</button>
+        </div>
+        <div class="fields">
+          <div><label>type</label><select class="gf-stat-type"><option value="FLAT"${typ === "FLAT" ? " selected" : ""}>FLAT</option><option value="PERCENT"${typ === "PERCENT" ? " selected" : ""}>PERCENT</option></select></div>
+          <div></div>
+          <div><label>min</label><input type="number" class="gf-stat-min" step="any" value="${mn}" /></div>
+          <div><label>max</label><input type="number" class="gf-stat-max" step="any" value="${mx}" /></div>
+        </div>
+        <details style="margin-top:0.5rem"><summary>level_bands (optional)</summary>
+          <p class="hint" style="margin:0.35rem 0">Highest <span class="mono">min_lvl</span> ≤ item level wins.</p>
+          <div class="gf-bands"></div>
+          <button type="button" class="ghost gf-add-band" style="margin-top:0.35rem">+ Band</button>
+        </details>`;
+      row.querySelector(".gf-stat-remove").addEventListener("click", () => row.remove());
+      const bandsEl = row.querySelector(".gf-bands");
+      row.querySelector(".gf-add-band").addEventListener("click", () => gfAddBandRow(bandsEl, null));
+      if (pref && Array.isArray(pref.level_bands)) {
+        for (const b of pref.level_bands) {
+          gfAddBandRow(bandsEl, b);
+        }
+      }
+      wrap.appendChild(row);
+    }
+
+    function gfClearStatRows() {
+      const wrap = document.getElementById("gf_stat_rows");
+      if (wrap) wrap.innerHTML = "";
+    }
+
+    function gfCollectGearSlots() {
+      const out = [];
+      document.querySelectorAll(".gf-slot:checked").forEach((el) => out.push(el.value));
+      return out;
+    }
+
+    function gfSetGearSlots(arr) {
+      document.querySelectorAll(".gf-slot").forEach((el) => { el.checked = false; });
+      if (!Array.isArray(arr)) return;
+      const set = new Set(arr.map((s) => String(s).toLowerCase()));
+      document.querySelectorAll(".gf-slot").forEach((el) => {
+        if (set.has(el.value)) el.checked = true;
+      });
+    }
+
+    function gfParseWeaponTypes(raw) {
+      const s = (raw || "").trim();
+      if (!s) return [];
+      return s.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+    }
+
+    function gfWeaponTypesToInput(arr) {
+      if (!Array.isArray(arr)) return "";
+      return arr.map((x) => String(x)).join(", ");
+    }
+
+    function buildGearAffixDoc() {
+      const display = (document.getElementById("gf_display_name").value || "").trim();
+      if (!display) {
+        throw new Error("display_name is required.");
+      }
+      const weight = Math.max(0, parseInt(document.getElementById("gf_weight").value, 10) || 0);
+      const minLvl = Math.max(0, parseInt(document.getElementById("gf_min_lvl").value, 10) || 0);
+      const gesRaw = (document.getElementById("gf_gear_effect_set").value || "").trim();
+      const ges = gesRaw.toLowerCase();
+      const doc = {
+        weight,
+        min_lvl: minLvl,
+        display_name: display,
+      };
+      if (ges) doc.gear_effect_set = ges;
+      const slots = gfCollectGearSlots();
+      if (slots.length) doc.gear_slots = slots;
+      const wtypes = gfParseWeaponTypes(document.getElementById("gf_weapon_types").value);
+      if (wtypes.length) doc.weapon_types = wtypes;
+
+      const stats = [];
+      document.querySelectorAll("#gf_stat_rows > .step-card").forEach((row) => {
+        const sid = (row.querySelector(".gf-stat-id")?.value || "").trim();
+        const typ = (row.querySelector(".gf-stat-type")?.value || "FLAT").trim();
+        const lo = Number(row.querySelector(".gf-stat-min")?.value);
+        const hi = Number(row.querySelector(".gf-stat-max")?.value);
+        if (!sid) return;
+        const entry = { stat: sid, type: typ, min: lo, max: hi };
+        const bands = [];
+        row.querySelectorAll(".gf-bands > .row").forEach((br) => {
+          const ml = parseInt(br.querySelector(".gf-band-minlvl")?.value, 10);
+          const bmin = Number(br.querySelector(".gf-band-min")?.value);
+          const bmax = Number(br.querySelector(".gf-band-max")?.value);
+          if (!Number.isFinite(ml)) return;
+          bands.push({ min_lvl: ml, min: bmin, max: bmax });
+        });
+        if (bands.length) {
+          bands.sort((a, b) => a.min_lvl - b.min_lvl);
+          entry.level_bands = bands;
+        }
+        stats.push(entry);
+      });
+      if (!stats.length && !ges) {
+        throw new Error("Add at least one stat line, or enter gear_effect_set for a set-tag-only affix.");
+      }
+      if (stats.length) doc.stats = stats;
+      return doc;
+    }
+
+    function importGearAffixFromDoc(doc) {
+      if (!doc || typeof doc !== "object") {
+        throw new Error("Invalid JSON object.");
+      }
+      if (doc.id != null && String(doc.id).trim() && (doc.hp_multi != null || doc.dmg_multi != null)) {
+        throw new Error("This file looks like a mob affix (has id + hp_multi/dmg_multi). Switch to Mob affix mode to import.");
+      }
+      if ((!Array.isArray(doc.stats) || doc.stats.length === 0) && !(doc.gear_effect_set && String(doc.gear_effect_set).trim())) {
+        throw new Error("Gear affix JSON needs stats and/or gear_effect_set.");
+      }
+      setDomField("gf_display_name", doc.display_name != null ? String(doc.display_name) : "Imported");
+      setDomField("gf_weight", doc.weight != null ? doc.weight : 100);
+      setDomField("gf_min_lvl", doc.min_lvl != null ? doc.min_lvl : 0);
+      setDomField("gf_gear_effect_set", doc.gear_effect_set != null ? String(doc.gear_effect_set) : "");
+      gfSetGearSlots(doc.gear_slots);
+      setDomField("gf_weapon_types", gfWeaponTypesToInput(doc.weapon_types));
+      gfClearStatRows();
+      if (Array.isArray(doc.stats)) {
+        for (const st of doc.stats) {
+          gfAddStatRow(st);
+        }
+      }
+      if (!document.getElementById("gf_stat_rows").children.length) {
+        gfAddStatRow({ stat: "physical_defense", type: "FLAT", min: 0, max: 0 });
+      }
+      document.getElementById("app_tab").value = "gear_affix";
+      syncAppTab();
+    }
+
+    document.getElementById("gf_add_stat")?.addEventListener("click", () => gfAddStatRow(null));
+
+    document.getElementById("gf_build")?.addEventListener("click", () => {
+      try {
+        out.value = JSON.stringify(buildGearAffixDoc(), null, 2);
+        msg.textContent = "Gear affix JSON ready — copy or download into gear_prefix/ or gear_suffix/.";
+        msg.className = "ok";
+      } catch (e) {
+        out.value = "";
+        msg.textContent = e.message || String(e);
+        msg.className = "err";
+      }
+    });
+    document.getElementById("gf_copy")?.addEventListener("click", async () => {
+      if (!out.value) document.getElementById("gf_build").click();
+      try {
+        await navigator.clipboard.writeText(out.value);
+        msg.textContent = "Copied.";
+        msg.className = "ok";
+        showToast("Copied");
+      } catch {
+        msg.textContent = "Could not copy automatically — select the output and copy.";
+        msg.className = "err";
+      }
+    });
+    document.getElementById("gf_download")?.addEventListener("click", () => {
+      if (!out.value) document.getElementById("gf_build").click();
+      const name = (document.getElementById("gf_filename").value || "").trim() || "gear_affix.json";
+      const blob = new Blob([out.value], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+    document.getElementById("gf_import_btn")?.addEventListener("click", () => document.getElementById("gf_import_file").click());
+    document.getElementById("gf_import_file")?.addEventListener("change", (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      ev.target.value = "";
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const doc = JSON.parse(String(reader.result || "{}"));
+          importGearAffixFromDoc(doc);
+          msg.textContent = "Loaded \"" + f.name + "\" — review and Preview.";
+          msg.className = "ok";
+        } catch (err) {
+          msg.textContent = err.message || String(err);
+          msg.className = "err";
+        }
+      };
+      reader.readAsText(f, "UTF-8");
+    });
+
+    function buildMobAffixDoc() {
+      let id = (document.getElementById("ma_id").value || "").trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_-]/g, "");
+      if (!id) {
+        throw new Error("Mob affix id is required (letters, numbers, underscore).");
+      }
+      const display = (document.getElementById("ma_display_name").value || "").trim() || id;
+      const color = (document.getElementById("ma_color").value || "GRAY").trim() || "GRAY";
+      const minLvl = Math.max(1, parseInt(document.getElementById("ma_min_lvl").value, 10) || 1);
+      const weight = Math.max(0, parseInt(document.getElementById("ma_weight").value, 10) || 0);
+      const hp = parseFloat(document.getElementById("ma_hp_multi").value);
+      const dmg = parseFloat(document.getElementById("ma_dmg_multi").value);
+      const stat = parseFloat(document.getElementById("ma_stat_multi").value);
+      const doc = {
+        id,
+        display_name: display,
+        color,
+        min_lvl: minLvl,
+        weight,
+        hp_multi: Number.isFinite(hp) ? hp : 1.0,
+        dmg_multi: Number.isFinite(dmg) ? dmg : 1.0,
+        stat_multi: Number.isFinite(stat) ? stat : 1.0,
+      };
+      if (document.getElementById("ma_enable_mob_skill").checked) {
+        const skillId = (document.getElementById("ma_skill_id").value || "").trim();
+        if (!skillId) {
+          throw new Error("mob_skill: skill_id is required when mob_skill is enabled.");
+        }
+        const canCast = document.getElementById("ma_can_cast_skills").checked;
+        const rank = Math.max(1, Math.min(99, parseInt(document.getElementById("ma_skill_rank").value, 10) || 1));
+        const chanceRaw = parseFloat(document.getElementById("ma_chance_of_casting").value);
+        const interval = Math.max(1, parseInt(document.getElementById("ma_cast_interval_ticks").value, 10) || 20);
+        const cd = Math.max(0, parseInt(document.getElementById("ma_cooldown_ticks").value, 10) || 0);
+        doc.mob_skill = {
+          can_cast_skills: canCast,
+          skill_id: skillId,
+          skill_rank: rank,
+          chance_of_casting: Number.isFinite(chanceRaw) ? chanceRaw : 0.1,
+          cast_interval_ticks: interval,
+          cooldown_ticks: cd,
+        };
+      }
+      return doc;
+    }
+
+    function setMaField(id, val) {
+      const el = document.getElementById(id);
+      if (el && val != null) el.value = val;
+    }
+    function setMaCheckbox(id, val) {
+      const el = document.getElementById(id);
+      if (el) el.checked = !!val;
+    }
+
+    function importMobAffixFromDoc(doc) {
+      if (!doc || typeof doc !== "object") {
+        throw new Error("Invalid JSON object.");
+      }
+      let id = String(doc.id || "").trim().toLowerCase();
+      if (!id) {
+        throw new Error("Imported JSON missing id.");
+      }
+      setMaField("ma_id", id);
+      setMaField("ma_filename", id + ".json");
+      setMaField("ma_display_name", doc.display_name != null ? String(doc.display_name) : id);
+      const colRaw = doc.color != null ? String(doc.color).trim().toUpperCase() : "GRAY";
+      const maCol = document.getElementById("ma_color");
+      if (maCol) {
+        const ok = Array.from(maCol.options).some((o) => o.value === colRaw);
+        maCol.value = ok ? colRaw : "GRAY";
+      }
+      setMaField("ma_min_lvl", doc.min_lvl != null ? doc.min_lvl : 1);
+      setMaField("ma_weight", doc.weight != null ? doc.weight : 100);
+      setMaField("ma_hp_multi", doc.hp_multi != null ? doc.hp_multi : 1.0);
+      setMaField("ma_dmg_multi", doc.dmg_multi != null ? doc.dmg_multi : 1.0);
+      setMaField("ma_stat_multi", doc.stat_multi != null ? doc.stat_multi : 1.0);
+      const ms = doc.mob_skill;
+      if (ms && typeof ms === "object" && (ms.can_cast_skills || ms.skill_id)) {
+        setMaCheckbox("ma_enable_mob_skill", true);
+        setMaCheckbox("ma_can_cast_skills", ms.can_cast_skills !== false);
+        setMaField("ma_skill_id", ms.skill_id != null ? String(ms.skill_id) : "");
+        setMaField("ma_skill_rank", ms.skill_rank != null ? ms.skill_rank : 1);
+        if (ms.chance_percent != null) {
+          setMaField("ma_chance_of_casting", Number(ms.chance_percent) / 100.0);
+        } else {
+          setMaField("ma_chance_of_casting", ms.chance_of_casting != null ? ms.chance_of_casting : 0.1);
+        }
+        setMaField("ma_cast_interval_ticks", ms.cast_interval_ticks != null ? ms.cast_interval_ticks : 20);
+        let cd = ms.cooldown_ticks;
+        if (cd == null && ms.cooldown_seconds != null) {
+          cd = Math.round(20 * Number(ms.cooldown_seconds));
+        }
+        setMaField("ma_cooldown_ticks", cd != null ? cd : 40);
+      } else {
+        setMaCheckbox("ma_enable_mob_skill", false);
+        setMaField("ma_skill_id", "");
+      }
+      syncMaMobSkillBlock();
+      document.getElementById("app_tab").value = "mob_affix";
+      syncAppTab();
+    }
+
+    document.getElementById("ma_build").addEventListener("click", () => {
+      try {
+        out.value = JSON.stringify(buildMobAffixDoc(), null, 2);
+        msg.textContent = "Mob affix JSON ready — copy or download.";
+        msg.className = "ok";
+      } catch (e) {
+        out.value = "";
+        msg.textContent = e.message || String(e);
+        msg.className = "err";
+      }
+    });
+    document.getElementById("ma_copy").addEventListener("click", async () => {
+      if (!out.value) document.getElementById("ma_build").click();
+      try {
+        await navigator.clipboard.writeText(out.value);
+        msg.textContent = "Copied.";
+        msg.className = "ok";
+        showToast("Copied");
+      } catch {
+        msg.textContent = "Could not copy automatically — select the output and copy.";
+        msg.className = "err";
+      }
+    });
+    document.getElementById("ma_download").addEventListener("click", () => {
+      if (!out.value) document.getElementById("ma_build").click();
+      const id = (document.getElementById("ma_id").value || "").trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_-]/g, "") || "mob_affix";
+      const name = (document.getElementById("ma_filename").value || "").trim() || (id + ".json");
+      const blob = new Blob([out.value], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+    document.getElementById("ma_import_btn").addEventListener("click", () => document.getElementById("ma_import_file").click());
+    document.getElementById("ma_import_file").addEventListener("change", (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      ev.target.value = "";
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const doc = JSON.parse(String(reader.result || "{}"));
+          importMobAffixFromDoc(doc);
+          msg.textContent = "Loaded \"" + f.name + "\" — review and Preview.";
+          msg.className = "ok";
+        } catch (err) {
+          msg.textContent = err.message || String(err);
+          msg.className = "err";
+        }
+      };
+      reader.readAsText(f, "UTF-8");
+    });
+    document.getElementById("ma_id").addEventListener("change", () => {
+      const raw = (document.getElementById("ma_id").value || "").trim().toLowerCase();
+      const id = raw.replace(/\s+/g, "_").replace(/[^a-z0-9_-]/g, "");
+      if (id && id !== raw) {
+        document.getElementById("ma_id").value = id;
+      }
+      if (id) {
+        document.getElementById("ma_filename").value = id + ".json";
+      }
+    });
+
     addStepCard("heal_flat");
     if (document.querySelectorAll("#uv_stage_rows_wrap .uv-stage-row").length === 0) {
       addUniversalStageRow("melee_core");
@@ -7776,6 +9750,9 @@
     syncBuilderFocusCard();
     syncSimpleModeUi();
     syncAppTab();
+    if (document.getElementById("gf_stat_rows") && document.getElementById("gf_stat_rows").children.length === 0) {
+      gfAddStatRow({ stat: "physical_defense", type: "FLAT", min: 10, max: 28 });
+    }
   </script>
 </body>
 </html>
