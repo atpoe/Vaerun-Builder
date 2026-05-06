@@ -140,7 +140,9 @@
         <label class="inline-check"><input type="radio" name="le_builder_mode" value="passive" /> Passive / mastery</label>
         <label class="inline-check"><input type="radio" name="le_builder_mode" value="mob_affix" /> Mob affix</label>
         <label class="inline-check"><input type="radio" name="le_builder_mode" value="gear_affix" /> Gear affix</label>
-        <label class="inline-check"><input type="radio" name="le_builder_mode" value="skill_stages" /> Skill (stages)</label>
+        <label class="inline-check"><input type="radio" name="le_builder_mode" value="skill_stages" /> Skill (flow)</label>
+        <label class="inline-check"><input type="radio" name="le_builder_mode" value="food_category" /> Food category</label>
+        <label class="inline-check"><input type="radio" name="le_builder_mode" value="potion_effects" /> Potion effects</label>
       </div>
     </header>
 
@@ -565,8 +567,8 @@
 
     <div id="le_skill_stages_workspace" class="hidden">
       <div class="card">
-        <h2>Skill — staged</h2>
-        <p class="hint">One <span class="mono">skill_actions/*.json</span> per file. Root fields <span class="mono">requires_gear_types</span>, <span class="mono">skill_attribute</span>, and optional <span class="mono">requires_active_skill_effect</span> are edited above the stage list (server blocks the cast if that skill effect is not active). Add stages <strong>one at a time</strong> (top → bottom). Each stage has a <strong>type</strong> and <strong>typed fields</strong> (no JSON blobs for stage params). Use <strong>spell_visual</strong> for <span class="mono">execution.type: spell</span> (ground line / projectile), <strong>ground_rupture</strong> for ruptures, <strong>melee_core</strong> / movement stages as needed, <strong>buff_pipeline</strong> for <span class="mono">execution.type: buff</span> with the same per-step forms as skill effects. Default preview and download omit <span class="mono">lost_essence_skill_stages_v1</span>; use <strong>Preview JSON (stage metadata)</strong> in Output when you need round-trip back into this builder.</p>
+        <h2>Skill — flow</h2>
+        <p class="hint">One <span class="mono">skill_actions/*.json</span> per file with <span class="mono">execution.type: \"flow\"</span>. Root fields <span class="mono">requires_gear_types</span>, <span class="mono">skill_attribute</span>, and optional <span class="mono">requires_active_skill_effect</span> are edited here (server blocks the cast if that skill effect is not active). Build <strong>nodes</strong> below and wire <span class="mono">emit.next</span>, <span class="mono">emit.on_stop</span> (movement), and <span class="mono">on_hit</span> chains on melee / spell nodes. Importing a legacy <span class="mono">skill_action</span> (non-flow) or JSON with <span class="mono">lost_essence_skill_stages_v1</span> performs a <strong>best-effort</strong> conversion into this flow graph for editing — verify edges and params before shipping.</p>
 
         <div class="row">
           <div>
@@ -624,27 +626,9 @@
         <label for="le_sk_skill_tree_tooltip" style="margin-top:0.65rem">skill_tree_tooltip (optional)</label>
         <textarea id="le_sk_skill_tree_tooltip" rows="2" placeholder="Rank 1: …"></textarea>
 
-        <h3 style="margin:0.95rem 0 0.35rem">Execution</h3>
-        <div class="row" style="margin-top:0.25rem">
-          <div>
-            <label>model</label>
-            <select id="le_sk_exec_model">
-              <option value="stages" selected>stages (legacy builder)</option>
-              <option value="flow">flow (nodes + on_hit chains)</option>
-            </select>
-          </div>
-          <div></div>
-        </div>
-        <p class="hint" id="le_sk_exec_model_hint" style="margin:0.25rem 0 0.5rem;font-size:0.78rem;color:var(--muted)">Stages compile top → bottom into one <span class="mono">execution</span>. Flow runs <span class="mono">execution.type: \"flow\"</span> nodes and supports on_hit chaining.</p>
-        <h3 style="margin:0.75rem 0 0.35rem">Stages / Nodes</h3>
+        <h3 style="margin:0.95rem 0 0.35rem">Flow nodes</h3>
         <div id="le_sk_compile_warn" class="msg" style="margin-top:0"></div>
-        <div id="le_sk_stages_wrap">
-          <ol id="le_sk_stage_rows" class="le-sk-timeline"></ol>
-          <div class="step-actions" style="margin-top:0.65rem">
-            <button type="button" class="ghost mini" id="le_sk_add_stage">+ Add stage</button>
-          </div>
-        </div>
-        <div id="le_sk_flow_wrap" class="hidden">
+        <div id="le_sk_flow_wrap">
           <div id="le_sk_flow_nodes"></div>
           <div class="step-actions" style="margin-top:0.65rem">
             <button type="button" class="ghost mini" id="le_sk_flow_add_node">+ Add node</button>
@@ -653,18 +637,218 @@
       </div>
     </div>
 
+    <div id="le_food_category_workspace" class="hidden">
+      <div class="card">
+        <h2>Food category</h2>
+        <p class="hint">Writes <span class="mono">data/&lt;ns&gt;/food_category/&lt;id&gt;.json</span> — template referenced by <span class="mono">food_buff</span> via <span class="mono">"food_category"</span>. Optional <span class="mono">experience_gain_percent</span> adds to RPG <strong>kill XP</strong> (multiple stacks add; e.g. <span class="mono">10</span> → +10% per stack).</p>
+        <div class="row">
+          <div>
+            <label for="le_fc_id">Category id (namespace:path)</label>
+            <input id="le_fc_id" type="text" class="mono" value="lost_essence:carb" spellcheck="false" />
+          </div>
+          <div>
+            <label for="le_fc_filename">Download file name</label>
+            <input id="le_fc_filename" type="text" class="mono" value="carb.json" spellcheck="false" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="le_fc_effect_primary">Primary effect</label>
+            <select id="le_fc_effect_primary" class="mono">
+              <option value="add_max_health" selected>Max health</option>
+              <option value="add_max_stamina">Max stamina</option>
+              <option value="add_max_mana">Max mana</option>
+              <option value="experience_gain_percent">Kill XP bonus (%)</option>
+            </select>
+          </div>
+          <div>
+            <label for="le_fc_effect_primary_val">Value</label>
+            <input id="le_fc_effect_primary_val" type="number" min="0" step="0.5" value="100" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="le_fc_effect_extra">Second effect (optional)</label>
+            <select id="le_fc_effect_extra" class="mono">
+              <option value="" selected>— none —</option>
+              <option value="add_max_health">Max health</option>
+              <option value="add_max_stamina">Max stamina</option>
+              <option value="add_max_mana">Max mana</option>
+              <option value="experience_gain_percent">Kill XP bonus (%)</option>
+            </select>
+          </div>
+          <div>
+            <label for="le_fc_effect_extra_val">Value</label>
+            <input id="le_fc_effect_extra_val" type="number" min="0" step="0.5" value="0" />
+          </div>
+        </div>
+        <p class="hint" style="margin:0.15rem 0 0.5rem">Pool rows use <span class="mono">add_max_*</span> / <span class="mono">experience_gain_percent</span>. You can also use only <strong>stat modifiers</strong> below (e.g. strength only). Modifiers are flat <span class="mono">ADD_VALUE</span> for the buff duration. Use pool rows for eat-heal on HP/stamina/mana; <span class="mono">stat_modifiers</span> on max_health does not trigger that heal.</p>
+        <h3 style="margin:0.75rem 0 0.35rem"><span class="mono">stat_modifiers</span></h3>
+        <div id="le_fc_stat_rows"></div>
+        <p style="margin:0.35rem 0 0.5rem"><button type="button" class="ghost mini" id="le_fc_add_stat">+ Add stat</button></p>
+        <div class="row">
+          <div>
+            <label for="le_fc_dur_mode">Duration</label>
+            <select id="le_fc_dur_mode">
+              <option value="seconds" selected>duration_seconds</option>
+              <option value="ticks">duration_ticks</option>
+            </select>
+          </div>
+          <div><label for="le_fc_duration">Value</label><input id="le_fc_duration" type="number" min="1" step="1" value="1800" /></div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="le_fc_stacking"><span class="mono">stacking</span></label>
+            <select id="le_fc_stacking">
+              <option value="single" selected>single</option>
+              <option value="stack">stack</option>
+            </select>
+          </div>
+          <div><label for="le_fc_max_stacks"><span class="mono">max_stacks</span></label><input id="le_fc_max_stacks" type="number" min="1" step="1" value="1" /></div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="le_fc_heal_current"><span class="mono">heal_current_by_bonus</span></label>
+            <select id="le_fc_heal_current">
+              <option value="true" selected>true</option>
+              <option value="false">false</option>
+            </select>
+          </div>
+          <div><label for="le_fc_display_name"><span class="mono">display_name</span></label><input id="le_fc_display_name" type="text" placeholder="Carbs" /></div>
+        </div>
+        <div class="row">
+          <div class="field-full">
+            <label for="le_fc_location"><span class="mono">icon</span> / buff HUD icon texture</label>
+            <input id="le_fc_location" type="text" class="mono" placeholder="lost_essence:textures/gui/food_category/carb.png" spellcheck="false" />
+            <p class="hint" style="margin:0.35rem 0 0">Shown on the Lost Essence buff HUD (not a vanilla mob effect).</p>
+          </div>
+        </div>
+        <div class="row">
+          <div><label for="le_fc_subtitle"><span class="mono">subtitle</span></label><input id="le_fc_subtitle" type="text" placeholder="Food" /></div>
+          <div>
+            <label for="le_fc_subtitle_color"><span class="mono">subtitle_color</span></label>
+            <select id="le_fc_subtitle_color" class="mono">
+              <option value="">— omit</option>
+              <option value="GRAY" selected>GRAY</option>
+              <option value="DARK_GRAY">DARK_GRAY</option>
+              <option value="BLUE">BLUE</option>
+              <option value="DARK_BLUE">DARK_BLUE</option>
+              <option value="GREEN">GREEN</option>
+              <option value="DARK_GREEN">DARK_GREEN</option>
+              <option value="AQUA">AQUA</option>
+              <option value="DARK_AQUA">DARK_AQUA</option>
+              <option value="RED">RED</option>
+              <option value="DARK_RED">DARK_RED</option>
+              <option value="LIGHT_PURPLE">LIGHT_PURPLE</option>
+              <option value="DARK_PURPLE">DARK_PURPLE</option>
+              <option value="GOLD">GOLD</option>
+              <option value="YELLOW">YELLOW</option>
+              <option value="WHITE">WHITE</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div><label for="le_fc_rarity_label"><span class="mono">rarity_label</span></label><input id="le_fc_rarity_label" type="text" placeholder="Carbs" /></div>
+          <div>
+            <label for="le_fc_rarity_color"><span class="mono">rarity_color</span></label>
+            <select id="le_fc_rarity_color" class="mono">
+              <option value="">— omit</option>
+              <option value="GRAY">GRAY</option>
+              <option value="DARK_GRAY">DARK_GRAY</option>
+              <option value="BLUE">BLUE</option>
+              <option value="DARK_BLUE">DARK_BLUE</option>
+              <option value="GREEN" selected>GREEN</option>
+              <option value="DARK_GREEN">DARK_GREEN</option>
+              <option value="AQUA">AQUA</option>
+              <option value="DARK_AQUA">DARK_AQUA</option>
+              <option value="RED">RED</option>
+              <option value="DARK_RED">DARK_RED</option>
+              <option value="LIGHT_PURPLE">LIGHT_PURPLE</option>
+              <option value="DARK_PURPLE">DARK_PURPLE</option>
+              <option value="GOLD">GOLD</option>
+              <option value="YELLOW">YELLOW</option>
+              <option value="WHITE">WHITE</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div><label for="le_fc_footer"><span class="mono">footer</span></label><input id="le_fc_footer" type="text" placeholder="" /></div>
+          <div>
+            <label for="le_fc_footer_color"><span class="mono">footer_color</span></label>
+            <select id="le_fc_footer_color" class="mono">
+              <option value="">— omit</option>
+              <option value="GRAY">GRAY</option>
+              <option value="DARK_GRAY" selected>DARK_GRAY</option>
+              <option value="BLUE">BLUE</option>
+              <option value="DARK_BLUE">DARK_BLUE</option>
+              <option value="GREEN">GREEN</option>
+              <option value="DARK_GREEN">DARK_GREEN</option>
+              <option value="AQUA">AQUA</option>
+              <option value="DARK_AQUA">DARK_AQUA</option>
+              <option value="RED">RED</option>
+              <option value="DARK_RED">DARK_RED</option>
+              <option value="LIGHT_PURPLE">LIGHT_PURPLE</option>
+              <option value="DARK_PURPLE">DARK_PURPLE</option>
+              <option value="GOLD">GOLD</option>
+              <option value="YELLOW">YELLOW</option>
+              <option value="WHITE">WHITE</option>
+            </select>
+          </div>
+        </div>
+        <label for="le_fc_notes" style="margin-top:0.65rem"><span class="mono">_notes</span> (one line per array entry)</label>
+        <textarea id="le_fc_notes" rows="4" placeholder="Documentation lines…"></textarea>
+      </div>
+    </div>
+
+    <div id="le_potion_effects_workspace" class="hidden">
+      <div class="card">
+        <h2>Potion effects</h2>
+        <p class="hint">Writes <span class="mono">data/&lt;ns&gt;/potion_effects/&lt;id&gt;.json</span> — ties Lost Essence <strong>stat bonuses</strong> to a vanilla mob effect’s real duration (milk / refresh / infinite beacon, etc.).</p>
+        <div class="row">
+          <div>
+            <label for="le_pe_id">id <span class="badge">file name, lowercase</span></label>
+            <input id="le_pe_id" type="text" class="mono" value="my_potion_rule" spellcheck="false" />
+          </div>
+          <div>
+            <label for="le_pe_filename">Download file name</label>
+            <input id="le_pe_filename" type="text" class="mono" value="my_potion_rule.json" spellcheck="false" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field-full">
+            <label for="le_pe_mob_effect"><span class="mono">mob_effect</span> (vanilla registry id)</label>
+            <input id="le_pe_mob_effect" type="text" class="mono" list="le_dl_mob_effects" placeholder="minecraft:regeneration" spellcheck="false" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="inline-check" style="align-self:center;margin-top:1.35rem">
+            <input type="checkbox" id="le_pe_amp_any" />
+            <label for="le_pe_amp_any"><span class="mono">amplifier_any</span> (match any)</label>
+          </div>
+          <div>
+            <label for="le_pe_amp"><span class="mono">amplifier</span> (0 = level I)</label>
+            <input id="le_pe_amp" type="number" min="0" step="1" value="0" />
+          </div>
+        </div>
+
+        <h3 style="margin:0.75rem 0 0.35rem"><span class="mono">stats</span></h3>
+        <div id="le_pe_stat_rows"></div>
+        <p style="margin:0.35rem 0 0.65rem"><button type="button" class="ghost mini" id="le_pe_add_stat">+ Add stat</button></p>
+        <p class="hint" style="margin:0">Each stat is a flat <span class="mono">ADD_VALUE</span> applied only while the mob effect is active.</p>
+      </div>
+    </div>
+
     <div class="card">
       <h2>Output</h2>
       <div class="actions">
         <button class="primary" id="btn_preview" type="button">Preview JSON</button>
-        <button class="ghost" id="btn_preview_skill_stages_meta" type="button">Preview JSON (stage metadata)</button>
         <button class="ghost" id="btn_import" type="button">Import file…</button>
         <button class="ghost" id="btn_import_from_out" type="button">Import from Output</button>
         <input id="fx_import_file" type="file" accept="application/json,.json" style="display:none" />
         <button class="ghost" id="btn_copy" type="button">Copy</button>
         <button class="ghost" id="btn_download" type="button">Download</button>
       </div>
-      <p class="hint" id="le_output_import_hint">Import accepts: skill/gear <strong>effect</strong> JSON; passive <strong>skill_action</strong> (<span class="mono">skill_id</span> + <span class="mono">execution.type: passive</span>); <strong>skill_action</strong> for Skill (stages) mode (<span class="mono">skill_id</span> + <span class="mono">execution</span>; optional <span class="mono">lost_essence_skill_stages_v1</span> for exact round-trip — default preview omits it; use Preview (stage metadata) to include it). <strong>mob_affix</strong> (<span class="mono">id</span> + multipliers / <span class="mono">mob_skill</span>); <strong>gear_prefix / gear_suffix</strong> affix JSON (<span class="mono">stats</span> / <span class="mono">gear_effect_set</span>); a single gear <strong>binding</strong> (<span class="mono">*_set.json</span>); a root <strong>array</strong> of bindings; optional merged gear pack; multi-section preview: paste one JSON block at a time.</p>
+      <p class="hint" id="le_output_import_hint">Import accepts: skill/gear <strong>effect</strong> JSON; passive <strong>skill_action</strong> (<span class="mono">skill_id</span> + <span class="mono">execution.type: passive</span>); active <strong>skill_action</strong> for Skill (flow) mode (<span class="mono">skill_id</span> + <span class="mono">execution</span> — <span class="mono">execution.type: \"flow\"</span> or legacy shapes / optional <span class="mono">lost_essence_skill_stages_v1</span>, converted best-effort to the flow editor). <strong>mob_affix</strong> (<span class="mono">id</span> + multipliers / <span class="mono">mob_skill</span>); <strong>gear_prefix / gear_suffix</strong> affix JSON (<span class="mono">stats</span> / <span class="mono">gear_effect_set</span>); a single gear <strong>binding</strong> (<span class="mono">*_set.json</span>); a root <strong>array</strong> of bindings; optional merged gear pack; multi-section preview: paste one JSON block at a time.</p>
       <div id="msg" class="msg"></div>
       <textarea id="out" class="mono"></textarea>
     </div>
@@ -679,7 +863,7 @@
 
     /** Step row containers: skill/gear effect wraps. */
     const LE_STEP_WRAP_IDS_ALL = ["fx_on_apply_wrap", "fx_while_active_wrap", "fx_on_expire_wrap"];
-    /** Round-trip metadata for Skill (stages) mode; safe to delete from JSON before ship if you want minimal files. */
+    /** Legacy builder metadata key — still recognized on import for best-effort flow conversion. */
     const LE_SKILL_STAGES_KEY = "lost_essence_skill_stages_v1";
 
     let SKILL_EFFECT_STEP_TYPES = [
@@ -2319,6 +2503,10 @@
       if (!type && rowEl.classList && rowEl.classList.contains("le-sk-stage")) {
         type = String(rowEl.querySelector(".le-sk-type")?.value || "").trim();
       }
+      if (!type && rowEl.classList && rowEl.classList.contains("le-flow-node")) {
+        const fk = String(rowEl.querySelector(".le-flow-kind")?.value || "").trim();
+        if (fk === "summon") type = "cast_summon";
+      }
       const live = rowEl.querySelector(".fx-live");
       if (!live) return;
 
@@ -2741,10 +2929,333 @@
       return !!(r && r.value === "skill_stages");
     }
 
-    function isSkillFlowExecMode() {
-      if (!isSkillStagesMode()) return false;
-      const sel = document.getElementById("le_sk_exec_model");
-      return sel && String(sel.value || "").trim() === "flow";
+    function isFoodCategoryMode() {
+      const r = document.querySelector('input[name="le_builder_mode"]:checked');
+      return !!(r && r.value === "food_category");
+    }
+
+    function isPotionEffectsMode() {
+      const r = document.querySelector('input[name="le_builder_mode"]:checked');
+      return !!(r && r.value === "potion_effects");
+    }
+
+    function looksLikePotionEffectsDoc(root) {
+      if (!root || typeof root !== "object" || Array.isArray(root)) return false;
+      if (!root.mob_effect || typeof root.mob_effect !== "string" || !root.mob_effect.trim()) return false;
+      if (!root.stats || typeof root.stats !== "object" || Array.isArray(root.stats)) return false;
+      return true;
+    }
+
+    function peStatPathFromJson(statRaw) {
+      let s = String(statRaw == null ? "" : statRaw).trim();
+      if (!s) return "strength";
+      const idx = s.indexOf(":");
+      if (idx >= 0) s = s.slice(idx + 1);
+      return s.replace(/^lost_essence:/, "").trim() || "strength";
+    }
+
+    function peStatSelectHtml(selectedPath) {
+      const sel = String(selectedPath || "strength").trim().replace(/^lost_essence:/, "");
+      return STAT_OPTIONS.map(([v, lab]) => `<option value="${v}"${v === sel ? " selected" : ""}>${lab}</option>`).join("");
+    }
+
+    function peClearStatRows() {
+      const wrap = document.getElementById("le_pe_stat_rows");
+      if (wrap) wrap.innerHTML = "";
+    }
+
+    function peAddStatRow(pref) {
+      const wrap = document.getElementById("le_pe_stat_rows");
+      if (!wrap) return;
+      const statPath = pref && pref.stat != null ? peStatPathFromJson(pref.stat) : "strength";
+      const amt = pref && pref.amount != null && Number.isFinite(Number(pref.amount)) ? Number(pref.amount) : 1;
+      const row = document.createElement("div");
+      row.className = "row";
+      row.style.marginTop = "0.35rem";
+      row.innerHTML = `
+        <div>
+          <label>stat</label>
+          <select class="mono le-pe-stat">${peStatSelectHtml(statPath)}</select>
+        </div>
+        <div>
+          <label>amount</label>
+          <input type="number" class="le-pe-amt" step="any" value="${amt}" />
+        </div>
+        <div style="align-self:end">
+          <button type="button" class="ghost mini le-pe-remove">Remove</button>
+        </div>`;
+      row.querySelector(".le-pe-remove").addEventListener("click", () => row.remove());
+      wrap.appendChild(row);
+    }
+
+    function buildPotionEffectsDoc() {
+      const mob = (document.getElementById("le_pe_mob_effect").value || "").trim();
+      if (!mob) {
+        msg.textContent = "potion_effects: mob_effect is required.";
+        return null;
+      }
+      const ampAny = !!document.getElementById("le_pe_amp_any").checked;
+      const amp = Math.max(0, Math.trunc(Number(document.getElementById("le_pe_amp").value) || 0));
+      const stats = {};
+      document.querySelectorAll("#le_pe_stat_rows .row").forEach((row) => {
+        const sel = row.querySelector(".le-pe-stat");
+        const amtEl = row.querySelector(".le-pe-amt");
+        if (!sel || !amtEl) return;
+        const path = (sel.value || "").trim().replace(/^lost_essence:/, "");
+        const amt = Number(amtEl.value);
+        if (!path || !Number.isFinite(amt) || amt === 0) return;
+        stats["lost_essence:" + path] = amt;
+      });
+      if (Object.keys(stats).length === 0) {
+        msg.textContent = "potion_effects: add at least 1 stat.";
+        return null;
+      }
+      const doc = { mob_effect: mob, stats };
+      if (ampAny) doc.amplifier_any = true;
+      else doc.amplifier = amp;
+      return doc;
+    }
+
+    function importPotionEffectsFromDoc(root, opts) {
+      opts = opts || {};
+      if (opts.fileName) {
+        const fn = String(opts.fileName).replace(/^.*[\\/]/, "").trim();
+        const fiel = document.getElementById("le_pe_filename");
+        if (fiel && fn) fiel.value = fn.toLowerCase().endsWith(".json") ? fn : fn + ".json";
+      }
+      document.getElementById("le_pe_mob_effect").value = root.mob_effect != null ? String(root.mob_effect) : "";
+      document.getElementById("le_pe_amp_any").checked = !!root.amplifier_any;
+      document.getElementById("le_pe_amp").value = String(root.amplifier != null ? Math.max(0, Math.trunc(Number(root.amplifier) || 0)) : 0);
+      document.getElementById("le_pe_amp").disabled = !!root.amplifier_any;
+      peClearStatRows();
+      const st = root.stats && typeof root.stats === "object" && !Array.isArray(root.stats) ? root.stats : {};
+      for (const k of Object.keys(st)) {
+        peAddStatRow({ stat: k, amount: st[k] });
+      }
+    }
+
+    function looksLikeFoodCategoryDoc(root) {
+      if (!root || typeof root !== "object" || Array.isArray(root)) return false;
+      if (root.item) return false;
+      if (root.execution) return false;
+      if (Array.isArray(root.on_apply_steps) && root.on_apply_steps.length) return false;
+      const hp = root.add_max_health;
+      const st = root.add_max_stamina;
+      const mn = root.add_max_mana;
+      const xp = root.experience_gain_percent;
+      const hasPool =
+        (typeof hp === "number" && hp > 0) ||
+        (typeof st === "number" && st > 0) ||
+        (typeof mn === "number" && mn > 0);
+      const hasXp = typeof xp === "number" && Number.isFinite(xp) && xp !== 0;
+      const sm = root.stat_modifiers;
+      const hasStats =
+        Array.isArray(sm) &&
+        sm.some(
+          (e) =>
+            e &&
+            typeof e === "object" &&
+            typeof e.amount === "number" &&
+            Number.isFinite(e.amount) &&
+            e.amount !== 0 &&
+            e.stat != null &&
+            String(e.stat).trim().length
+        );
+      if (!hasPool && !hasXp && !hasStats) return false;
+      const dt = root.duration_ticks;
+      const ds = root.duration_seconds;
+      if (!(typeof dt === "number" && dt > 0) && !(typeof ds === "number" && ds > 0)) return false;
+      return true;
+    }
+
+    function leFcWriteFoodEffectField(doc, key, rawVal) {
+      if (!key) return;
+      const val = Number(rawVal);
+      if (!Number.isFinite(val)) return;
+      if (key === "experience_gain_percent") {
+        if (val !== 0) doc[key] = val;
+        return;
+      }
+      if (val > 0) doc[key] = val;
+    }
+
+    function leFcStatPathFromJson(statRaw) {
+      let s = String(statRaw == null ? "" : statRaw).trim();
+      if (!s) return "strength";
+      const idx = s.indexOf(":");
+      if (idx >= 0) s = s.slice(idx + 1);
+      return s.replace(/^lost_essence:/, "").trim() || "strength";
+    }
+
+    function leFcStatSelectHtml(selectedPath) {
+      const sel = String(selectedPath || "strength").trim().replace(/^lost_essence:/, "");
+      return STAT_OPTIONS.map(
+        ([v, lab]) => `<option value="${v}"${v === sel ? " selected" : ""}>${lab}</option>`
+      ).join("");
+    }
+
+    function leFcClearStatRows() {
+      const wrap = document.getElementById("le_fc_stat_rows");
+      if (wrap) wrap.innerHTML = "";
+    }
+
+    function leFcAddStatRow(pref) {
+      const wrap = document.getElementById("le_fc_stat_rows");
+      if (!wrap) return;
+      const statPath = pref && pref.stat != null ? leFcStatPathFromJson(pref.stat) : "strength";
+      const amt = pref && pref.amount != null && Number.isFinite(Number(pref.amount)) ? Number(pref.amount) : 1;
+      const row = document.createElement("div");
+      row.className = "row";
+      row.style.marginTop = "0.35rem";
+      row.innerHTML = `
+        <div>
+          <label>stat</label>
+          <select class="mono le-fc-sm-stat">${leFcStatSelectHtml(statPath)}</select>
+        </div>
+        <div>
+          <label>amount</label>
+          <input type="number" class="le-fc-sm-amt" step="any" value="${amt}" />
+        </div>
+        <div style="align-self:end">
+          <button type="button" class="ghost mini le-fc-sm-remove">Remove</button>
+        </div>`;
+      row.querySelector(".le-fc-sm-remove").addEventListener("click", () => row.remove());
+      wrap.appendChild(row);
+    }
+
+    function leFcCollectStatModifiers() {
+      const wrap = document.getElementById("le_fc_stat_rows");
+      if (!wrap) return [];
+      const out = [];
+      wrap.querySelectorAll(":scope > .row").forEach((row) => {
+        const sel = row.querySelector(".le-fc-sm-stat");
+        const amtEl = row.querySelector(".le-fc-sm-amt");
+        if (!sel || !amtEl) return;
+        const path = (sel.value || "").trim().replace(/^lost_essence:/, "");
+        const amt = Number(amtEl.value);
+        if (!path || !Number.isFinite(amt) || amt === 0) return;
+        out.push({ stat: "lost_essence:" + path, amount: amt });
+      });
+      return out;
+    }
+
+    function buildFoodCategoryDoc() {
+      const useTicks = (document.getElementById("le_fc_dur_mode").value || "seconds") === "ticks";
+      const durVal = Math.max(1, Number(document.getElementById("le_fc_duration").value) || 1);
+      const stacking = (document.getElementById("le_fc_stacking").value || "single").toLowerCase();
+      const maxStacks = Math.max(1, Math.trunc(Number(document.getElementById("le_fc_max_stacks").value) || 1));
+      const healCur = (document.getElementById("le_fc_heal_current").value || "true") === "true";
+      const displayName = (document.getElementById("le_fc_display_name").value || "").trim();
+      const loc = (document.getElementById("le_fc_location").value || "").trim();
+      const notes = (document.getElementById("le_fc_notes").value || "").trim();
+      const pk = document.getElementById("le_fc_effect_primary").value;
+      const pv = document.getElementById("le_fc_effect_primary_val").value;
+      const ek = (document.getElementById("le_fc_effect_extra").value || "").trim();
+      const ev = document.getElementById("le_fc_effect_extra_val").value;
+      const doc = {};
+      if (notes) {
+        doc._notes = notes.split(/\r?\n/).filter((l) => l.length);
+      }
+      leFcWriteFoodEffectField(doc, pk, pv);
+      if (ek && ek !== pk) leFcWriteFoodEffectField(doc, ek, ev);
+      const hasPool =
+        (typeof doc.add_max_health === "number" && doc.add_max_health > 0) ||
+        (typeof doc.add_max_stamina === "number" && doc.add_max_stamina > 0) ||
+        (typeof doc.add_max_mana === "number" && doc.add_max_mana > 0);
+      const hasXp = typeof doc.experience_gain_percent === "number" && doc.experience_gain_percent !== 0;
+      const statMods = leFcCollectStatModifiers();
+      if (statMods.length) doc.stat_modifiers = statMods;
+      if (!hasPool && !hasXp && !statMods.length) {
+        msg.textContent =
+          "Food category: add a pool bonus, kill XP, or at least one stat modifier row.";
+        return null;
+      }
+      if (useTicks) doc.duration_ticks = Math.trunc(durVal);
+      else doc.duration_seconds = durVal;
+      if (stacking === "stack") doc.stacking = "stack";
+      else doc.stacking = "single";
+      doc.max_stacks = maxStacks;
+      doc.heal_current_by_bonus = healCur;
+      if (displayName) doc.display_name = displayName;
+      if (loc) doc.icon = loc;
+      const sub = (document.getElementById("le_fc_subtitle").value || "").trim();
+      if (sub) doc.subtitle = sub;
+      const subCol = (document.getElementById("le_fc_subtitle_color").value || "").trim();
+      if (subCol) doc.subtitle_color = subCol;
+      const rLab = (document.getElementById("le_fc_rarity_label").value || "").trim();
+      if (rLab) doc.rarity_label = rLab;
+      const rCol = (document.getElementById("le_fc_rarity_color").value || "").trim();
+      if (rCol) doc.rarity_color = rCol;
+      const foot = (document.getElementById("le_fc_footer").value || "").trim();
+      if (foot) doc.footer = foot;
+      const footCol = (document.getElementById("le_fc_footer_color").value || "").trim();
+      if (footCol) doc.footer_color = footCol;
+      return doc;
+    }
+
+    function importFoodCategoryFromDoc(root, opts) {
+      opts = opts || {};
+      if (opts.fileName) {
+        const fn = String(opts.fileName).replace(/^.*[\\/]/, "").trim();
+        const fiel = document.getElementById("le_fc_filename");
+        if (fiel && fn) fiel.value = fn.toLowerCase().endsWith(".json") ? fn : fn + ".json";
+      }
+      if (root._notes != null) {
+        const n = root._notes;
+        const ta = document.getElementById("le_fc_notes");
+        if (ta) ta.value = Array.isArray(n) ? n.join("\n") : String(n);
+      }
+      const order = ["add_max_health", "add_max_stamina", "add_max_mana", "experience_gain_percent"];
+      const found = [];
+      for (const k of order) {
+        const v = root[k];
+        if (k === "experience_gain_percent") {
+          if (typeof v === "number" && Number.isFinite(v) && v !== 0) found.push([k, v]);
+        } else if (typeof v === "number" && v > 0) {
+          found.push([k, v]);
+        }
+      }
+      const primary = found[0] || ["add_max_health", 100];
+      const extra = found[1] || ["", 0];
+      const pEl = document.getElementById("le_fc_effect_primary");
+      const eEl = document.getElementById("le_fc_effect_extra");
+      if (pEl) pEl.value = primary[0];
+      document.getElementById("le_fc_effect_primary_val").value = String(primary[1]);
+      if (eEl) eEl.value = extra[0] || "";
+      document.getElementById("le_fc_effect_extra_val").value = String(extra[0] ? extra[1] : 0);
+      leFcClearStatRows();
+      if (Array.isArray(root.stat_modifiers)) {
+        for (const entry of root.stat_modifiers) {
+          if (entry && typeof entry === "object") leFcAddStatRow(entry);
+        }
+      }
+      if (root.duration_ticks != null && root.duration_ticks > 0) {
+        document.getElementById("le_fc_dur_mode").value = "ticks";
+        document.getElementById("le_fc_duration").value = String(root.duration_ticks);
+      } else {
+        document.getElementById("le_fc_dur_mode").value = "seconds";
+        const ds = root.duration_seconds != null ? root.duration_seconds : 60;
+        document.getElementById("le_fc_duration").value = String(ds);
+      }
+      const st = String(root.stacking || "single").toLowerCase();
+      document.getElementById("le_fc_stacking").value = st === "stack" ? "stack" : "single";
+      document.getElementById("le_fc_max_stacks").value = String(root.max_stacks != null ? root.max_stacks : 1);
+      document.getElementById("le_fc_heal_current").value = root.heal_current_by_bonus === false ? "false" : "true";
+      document.getElementById("le_fc_display_name").value = root.display_name != null ? String(root.display_name) : "";
+      const locV = root.icon != null ? String(root.icon) : "";
+      document.getElementById("le_fc_location").value = locV;
+      document.getElementById("le_fc_subtitle").value = root.subtitle != null ? String(root.subtitle) : "";
+      const sc = root.subtitle_color != null ? String(root.subtitle_color).trim().toUpperCase() : "";
+      const scEl = document.getElementById("le_fc_subtitle_color");
+      if (scEl) scEl.value = sc && [...scEl.options].some((o) => o.value === sc) ? sc : sc ? "" : "";
+      document.getElementById("le_fc_rarity_label").value = root.rarity_label != null ? String(root.rarity_label) : "";
+      const rc = root.rarity_color != null ? String(root.rarity_color).trim().toUpperCase() : "";
+      const rcEl = document.getElementById("le_fc_rarity_color");
+      if (rcEl) rcEl.value = rc && [...rcEl.options].some((o) => o.value === rc) ? rc : rc ? "" : "";
+      document.getElementById("le_fc_footer").value = root.footer != null ? String(root.footer) : "";
+      const fc = root.footer_color != null ? String(root.footer_color).trim().toUpperCase() : "";
+      const fcEl = document.getElementById("le_fc_footer_color");
+      if (fcEl) fcEl.value = fc && [...fcEl.options].some((o) => o.value === fc) ? fc : fc ? "" : "";
     }
 
     /** Skill-effect multi-level authoring (matches {@code SkillEffectDefinition} {@code levels} merge in Java). */
@@ -3097,8 +3608,10 @@
       const mobAffix = isMobAffixMode();
       const gearAffix = isGearAffixMode();
       const skillStages = isSkillStagesMode();
+      const foodCategory = isFoodCategoryMode();
+      const potionEffects = isPotionEffectsMode();
       const stack = document.getElementById("le_skill_gear_workspace");
-      if (stack) stack.classList.toggle("hidden", passive || mobAffix || gearAffix || skillStages);
+      if (stack) stack.classList.toggle("hidden", passive || mobAffix || gearAffix || skillStages || foodCategory || potionEffects);
       const pw = document.getElementById("le_passive_workspace");
       if (pw) pw.classList.toggle("hidden", !passive);
       const maw = document.getElementById("le_mob_affix_workspace");
@@ -3107,48 +3620,56 @@
       if (gaw) gaw.classList.toggle("hidden", !gearAffix);
       const ssw = document.getElementById("le_skill_stages_workspace");
       if (ssw) ssw.classList.toggle("hidden", !skillStages);
+      const fcw = document.getElementById("le_food_category_workspace");
+      if (fcw) fcw.classList.toggle("hidden", !foodCategory);
+      const pew = document.getElementById("le_potion_effects_workspace");
+      if (pew) pew.classList.toggle("hidden", !potionEffects);
       const card = document.getElementById("le_gear_proc_card");
-      if (card) card.classList.toggle("hidden", !gear || passive || mobAffix || gearAffix || skillStages);
+      if (card) card.classList.toggle("hidden", !gear || passive || mobAffix || gearAffix || skillStages || foodCategory || potionEffects);
       const sub = document.getElementById("le_subtitle");
       if (sub) {
         if (passive) {
-          sub.innerHTML = "Author <strong>passive / mastery</strong> <span class=\"mono\">skill_actions/*.json</span> with <span class=\"mono\">execution.type: \"passive\"</span>. Use other modes for skill effects, <strong>Skill (stages)</strong> for active skills, <span class=\"mono\">mob_affixes/</span>, or <span class=\"mono\">gear_prefix</span>/<span class=\"mono\">gear_suffix</span>.";
+          sub.innerHTML = "Author <strong>passive / mastery</strong> <span class=\"mono\">skill_actions/*.json</span> with <span class=\"mono\">execution.type: \"passive\"</span>. Use other modes for skill effects, <strong>Skill (flow)</strong> for active skills, <span class=\"mono\">mob_affixes/</span>, or <span class=\"mono\">gear_prefix</span>/<span class=\"mono\">gear_suffix</span>.";
         } else if (mobAffix) {
           sub.innerHTML = "Author <strong>mob affixes</strong> for <span class=\"mono\">data/&lt;ns&gt;/mob_affixes/*.json</span> (<span class=\"mono\">MobAffixRegistry</span>). Switch modes for skill/gear effects, passive <span class=\"mono\">skill_actions/</span>, or gear affixes.";
         } else if (gearAffix) {
           sub.innerHTML = "Author <strong>gear affixes</strong> for <span class=\"mono\">data/&lt;ns&gt;/gear_prefix/</span> or <span class=\"mono\">gear_suffix/</span> (<span class=\"mono\">GearAffixRegistry</span>). Use <span class=\"mono\">gear_effect_set</span> to tag items for set bonuses in <span class=\"mono\">gear_effects/*_set.json</span>.";
         } else if (skillStages) {
-          sub.innerHTML = "Author <strong>skill_actions</strong> in <span class=\"mono\">skill_actions/*.json</span> using <strong>stages</strong> (legacy builder) or <strong>flow</strong> (nodes + on_hit chains). Passive / mastery still uses its own mode.";
+          sub.innerHTML = "Author <strong>skill_actions</strong> in <span class=\"mono\">skill_actions/*.json</span> with <span class=\"mono\">execution.type: \"flow\"</span> (nodes + <span class=\"mono\">emit</span> / <span class=\"mono\">on_hit</span> chains). Passive / mastery still uses its own mode.";
+        } else if (foodCategory) {
+          sub.innerHTML = "Author <strong>food_category</strong> JSON under <span class=\"mono\">data/&lt;ns&gt;/food_category/</span>. Link items with <span class=\"mono\">food_buff</span> + <span class=\"mono\">food_category</span>. <span class=\"mono\">experience_gain_percent</span> boosts RPG kill XP while the buff is active (stacks add).";
+        } else if (potionEffects) {
+          sub.innerHTML = "Author <strong>potion_effects</strong> JSON under <span class=\"mono\">data/&lt;ns&gt;/potion_effects/</span>. Applies Lost Essence stat bonuses while a vanilla mob effect is active (duration follows the mob effect exactly).";
         } else if (gear) {
           sub.innerHTML = "Author <strong>gear effects</strong> under <span class=\"mono\">data/&lt;ns&gt;/gear_effects/</span>: buff in <span class=\"mono\">*_effect.json</span>, each binding in its own <span class=\"mono\">*_set.json</span>. Preview stacks those blocks (merged single-file shape is still supported by the mod if you prefer it).";
         } else {
-          sub.innerHTML = "Author <strong>skill effects</strong> for <span class=\"mono\">data/&lt;ns&gt;/skill_effects/</span> — same step types as gear buffs; switch modes for <span class=\"mono\">gear_effects/</span>, passive <span class=\"mono\">skill_actions/</span>, <strong>Skill (stages)</strong> for active skills, <span class=\"mono\">mob_affixes/</span>, or gear affixes.";
+          sub.innerHTML = "Author <strong>skill effects</strong> for <span class=\"mono\">data/&lt;ns&gt;/skill_effects/</span> — same step types as gear buffs; switch modes for <span class=\"mono\">gear_effects/</span>, passive <span class=\"mono\">skill_actions/</span>, <strong>Skill (flow)</strong> for active skills, <span class=\"mono\">mob_affixes/</span>, gear affixes, or <strong>Food category</strong>.";
         }
       }
       const idHead = document.getElementById("le_identity_heading");
-      if (idHead && !passive && !mobAffix && !gearAffix && !skillStages) idHead.textContent = gear ? "Gear effect identity" : "Effect identity";
+      if (idHead && !passive && !mobAffix && !gearAffix && !skillStages && !foodCategory && !potionEffects) idHead.textContent = gear ? "Gear effect identity" : "Effect identity";
       const hint = document.getElementById("le_identity_hint");
-      if (hint && !passive && !mobAffix && !gearAffix && !skillStages) {
+      if (hint && !passive && !mobAffix && !gearAffix && !skillStages && !foodCategory && !potionEffects) {
         hint.innerHTML = gear
           ? "Builds <span class=\"mono\">gear_effects/*.json</span>. <span class=\"mono\">id</span> is optional in datapacks (file path registers the effect); add it here so bindings and preview match."
           : "Builds <span class=\"mono\">skill_effects/*.json</span>. The <span class=\"mono\">id</span> should match the datapack path (slashes like folders). Use <strong>Effect levels</strong> (below Steps) to save rank 2+ as <span class=\"mono\">levels</span> — each level is a <strong>full field copy</strong> merged over the root at runtime; <span class=\"mono\">display</span> is kept on the root only.";
       }
       const labId = document.getElementById("le_label_fx_id");
-      if (labId && !passive && !mobAffix && !gearAffix && !skillStages) labId.textContent = gear ? "Gear effect id (optional)" : "id";
+      if (labId && !passive && !mobAffix && !gearAffix && !skillStages && !foodCategory && !potionEffects) labId.textContent = gear ? "Gear effect id (optional)" : "id";
       const labFn = document.getElementById("le_label_fx_filename");
-      if (labFn && !passive && !mobAffix && !gearAffix && !skillStages) labFn.textContent = gear ? "Download file name (gear_effects/)" : "Download file name";
+      if (labFn && !passive && !mobAffix && !gearAffix && !skillStages && !foodCategory && !potionEffects) labFn.textContent = gear ? "Download file name (gear_effects/)" : "Download file name";
       const fxId = document.getElementById("fx_id");
-      if (fxId && !passive && !mobAffix && !gearAffix && !skillStages) fxId.placeholder = gear ? "lost_essence:rz_ge_bulwark_foundation_effect" : "lost_essence:defender/comeback";
+      if (fxId && !passive && !mobAffix && !gearAffix && !skillStages && !foodCategory && !potionEffects) fxId.placeholder = gear ? "lost_essence:rz_ge_bulwark_foundation_effect" : "lost_essence:defender/comeback";
       const fxFn = document.getElementById("fx_filename");
-      if (fxFn && !passive && !mobAffix && !gearAffix && !skillStages) fxFn.placeholder = gear ? "rz_ge_bulwark_foundation_effect.json" : "comeback.json";
-      document.getElementById("le_skill_only_allow_wrap")?.classList.toggle("hidden", gear || passive || mobAffix || gearAffix || skillStages);
-      document.getElementById("le_skill_only_movement_details")?.classList.toggle("hidden", gear || passive || mobAffix || gearAffix || skillStages);
-      document.getElementById("le_gear_rules_hint")?.classList.toggle("hidden", !gear || passive || mobAffix || gearAffix || skillStages);
+      if (fxFn && !passive && !mobAffix && !gearAffix && !skillStages && !foodCategory && !potionEffects) fxFn.placeholder = gear ? "rz_ge_bulwark_foundation_effect.json" : "comeback.json";
+      document.getElementById("le_skill_only_allow_wrap")?.classList.toggle("hidden", gear || passive || mobAffix || gearAffix || skillStages || foodCategory || potionEffects);
+      document.getElementById("le_skill_only_movement_details")?.classList.toggle("hidden", gear || passive || mobAffix || gearAffix || skillStages || foodCategory || potionEffects);
+      document.getElementById("le_gear_rules_hint")?.classList.toggle("hidden", !gear || passive || mobAffix || gearAffix || skillStages || foodCategory || potionEffects);
       const leFxLvCard = document.getElementById("le_skill_effect_levels_card");
       if (leFxLvCard) {
-        leFxLvCard.classList.toggle("hidden", gear || passive || mobAffix || gearAffix || skillStages);
+        leFxLvCard.classList.toggle("hidden", gear || passive || mobAffix || gearAffix || skillStages || foodCategory || potionEffects);
       }
-      if (gear || passive || mobAffix || gearAffix || skillStages) {
+      if (gear || passive || mobAffix || gearAffix || skillStages || foodCategory || potionEffects) {
         leFxResetLevelsState();
       } else {
         leFxRebuildLevelSelectUi();
@@ -3161,19 +3682,11 @@
         }
       }
       if (skillStages) {
-        const ol = document.getElementById("le_sk_stage_rows");
-        if (ol && !ol.querySelector("li.le-sk-stage")) {
-          addLeSkStageRow("movement_dash", { max_blocks: 4, stop_on_block: true, stop_on_entity: true });
+        const fw = document.getElementById("le_sk_flow_nodes");
+        if (fw && !fw.querySelector(".le-flow-node")) {
+          addLeSkFlowNode("movement", { params: { movement_type: "slide", direction: "forward", strength: 1, delay_resolve_ticks: 4, horizontal_only: true, combine: "add" } });
         }
       }
-      const previewMetaBtn = document.getElementById("btn_preview_skill_stages_meta");
-      if (previewMetaBtn) previewMetaBtn.classList.toggle("hidden", !skillStages || isSkillFlowExecMode());
-
-      // Skill exec model toggles inside skill_stages workspace.
-      const sw = document.getElementById("le_sk_stages_wrap");
-      const fw = document.getElementById("le_sk_flow_wrap");
-      if (sw) sw.classList.toggle("hidden", !skillStages || isSkillFlowExecMode());
-      if (fw) fw.classList.toggle("hidden", !skillStages || !isSkillFlowExecMode());
     }
 
     function leSetCheck(id, on) {
@@ -3790,49 +4303,28 @@
     }
 
 function looksLikeSkillStagesImportDoc(d) {
-      if (!d || typeof d !== 'object' || Array.isArray(d)) return false;
+      if (!d || typeof d !== "object" || Array.isArray(d)) return false;
       if (Array.isArray(d[LE_SKILL_STAGES_KEY]) && d[LE_SKILL_STAGES_KEY].length) return true;
       if (Array.isArray(d.lost_essence_builder_universal_chain) && d.lost_essence_builder_universal_chain.length) return true;
-      if (!d.skill_id || typeof d.skill_id !== 'string') return false;
       const ex = d.execution;
-      if (!ex || typeof ex !== 'object') return false;
-      if (String(ex.type || '').trim().toLowerCase() === 'passive') return false;
+      if (ex && typeof ex === "object") {
+        const ety = String(ex.type || "").trim().toLowerCase();
+        if (ety === "passive") return false;
+        // Flow graph JSON (even without skill_id — e.g. edited Output) must route here; otherwise import falls through
+        // to gear/skill_effect import and old flow nodes are never cleared.
+        if (ety === "flow" && ex.nodes && typeof ex.nodes === "object" && !Array.isArray(ex.nodes)) return true;
+      }
+      if (!d.skill_id || typeof d.skill_id !== "string") return false;
+      if (!ex || typeof ex !== "object") return false;
+      if (String(ex.type || "").trim().toLowerCase() === "passive") return false;
       return true;
-    }const LE_SK_STAGE_OPTIONS = [
-  ["cast_presentation", "Presentation — swing / Player Animator"],
-  ["melee_core", "Melee — cone strikes (phys/magic scaling)"],
-  ["movement_dash", "Movement — dash forward (blocks; stop on block / entity)"],
-  ["move_forward", "Movement — velocity slide along look"],
-  ["movement_gap_close", "Movement — gap-close to cone target"],
-  ["spell_visual", "Spell — ground / projectile / falling / place entity / place block"],
-  ["ground_rupture", "Ground rupture — expanding arc damage"],
-  ["cast_self_heal", "Cast — self heal"],
-  ["on_cast_spell_projectile", "Cast — extra spell projectile"],
-  ["cast_summon", "Cast — summon mobs"],
-  ["blink_look", "Cast — blink along look"],
-  ["cast_taunt", "Cast — taunt radius"],
-  ["channel_controls", "Channel — cancel rules / damage mult"],
-  ["trigger_effects", "Trigger — apply skill_effect (effect_level matches skill_id lv_N_ rank)"],
-  ["buff_pipeline", "Buff — pipeline steps (same forms as skill effects)"],
-];
+    }
 
-const LE_SK_STAGE_SHORT_HINT = {
-  cast_presentation: "cast_animation / player_animation / lock_model_rotation; optional animation_lock_movement (server root lock, instant casts).",
-  melee_core: "execution.type melee — melee_mode (cone / line / AoE…), reach, cone_half_angle_deg, aoe_radius, delays.",
-  movement_dash: "Legacy stage row — exports execution.dash_forward for non-flow melee; flow skills use movement node slide / teleport.",
-  move_forward: "caster_look_motion impulse along look.",
-  movement_gap_close: "dash_into_target toward cone target.",
-  spell_visual: "execution.type spell — spell_mode ground | projectile | projectile_falling | place_entity | place_block; geo + tuning for visuals; place_* uses max_life_seconds to despawn / revert.",
-  ground_rupture: "execution.type ground_rupture — arc, timing, knockback.",
-  cast_self_heal: "cast_self_heal block on execution.",
-  on_cast_spell_projectile: "Extra homing-style spell projectile on cast.",
-  cast_summon: "cast_summon mob pack.",
-  blink_look: "blink_look teleport along look.",
-  cast_taunt: "cast_taunt radius.",
-  channel_controls: "Channel damage / cancel flags.",
-  trigger_effects: "trigger_effects on_cast / optional on_hit; effect_level defaults to skill_id rank (lv_N_) for skill_effects levels merge.",
-  buff_pipeline: "execution.type buff — add steps with the buttons below (typed fields per step).",
-};
+/** Remove all flow editor cards (before importing or resetting graph state). */
+function leSkClearFlowNodes() {
+  const fw = document.getElementById("le_sk_flow_nodes");
+  if (fw) fw.innerHTML = "";
+}
 
 function finalizeCastSummonFromSerializedP(p) {
   const et = String(p.entity_type || "").trim();
@@ -4431,12 +4923,6 @@ function leSkSyncTriggerEffectLevelsToSkillRank() {
   const idEl = document.getElementById("le_sk_skill_id");
   const rank = leSkInferRankFromSkillId(idEl && idEl.value);
   const rkStr = String(rank);
-  document.querySelectorAll("#le_sk_stage_rows > li.le-sk-stage").forEach((li) => {
-    const ts = li.querySelector(".le-sk-type");
-    if (!ts || String(ts.value) !== "trigger_effects") return;
-    const inp = li.querySelector('.le-sk-fields [data-le-sk="effect_level"]');
-    if (inp) inp.value = rkStr;
-  });
   document.querySelectorAll("#le_sk_flow_nodes > .le-flow-node").forEach((node) => {
     const kind = String(node.querySelector(".le-flow-kind")?.value || "").trim();
     if (kind !== "trigger_effect") return;
@@ -4996,15 +5482,15 @@ function renderLeSkFields(li, type, pref) {
   }
   // (Optional blocks use <details>; no preset wiring needed.)
   if (type === "cast_summon") {
-    const li = fieldsEl.closest("li.le-sk-stage");
-    if (li) updateRowLivePreview(li);
+    const host = fieldsEl.closest("li.le-sk-stage") || fieldsEl.closest(".le-flow-node");
+    if (host) updateRowLivePreview(host);
   }
 
   if (unk) {
     const note = document.createElement("p");
     note.className = "msg err";
     note.style.marginTop = "0.35rem";
-    note.textContent = `Imported execution.type "${unk}" is not fully modeled — adjust stages or edit the datapack.`;
+    note.textContent = `Imported execution.type "${unk}" is not fully modeled — adjust the flow graph or edit the datapack.`;
     fieldsEl.insertBefore(note, fieldsEl.firstChild);
   }
 
@@ -5147,162 +5633,6 @@ function readLeSkParamsFromFields(li, type) {
   return o;
 }
 
-function leSkStageOptionsHtml() {
-  return LE_SK_STAGE_OPTIONS.map(([v, lab]) => `<option value="${v}">${lab}</option>`).join("");
-}
-
-function syncLeSkStageHint(li) {
-  const sel = li.querySelector(".le-sk-type");
-  const hint = li.querySelector(".le-sk-type-hint");
-  if (!sel || !hint) return;
-  hint.textContent = LE_SK_STAGE_SHORT_HINT[sel.value] || "Configure fields below.";
-}
-
-function serializeLeSkStageRow(li) {
-  const t = (li.querySelector(".le-sk-type")?.value || "").trim();
-  const params = readLeSkParamsFromFields(li, t);
-  if (!params || typeof params !== "object" || Array.isArray(params)) {
-    throw new Error(`Stage "${t}" params invalid.`);
-  }
-  return {
-    type: t,
-    when: (li.querySelector(".le-sk-when")?.value || "immediate") === "delayed_ticks" ? "delayed_ticks" : "immediate",
-    delay_ticks: Math.max(0, Math.trunc(Number(li.querySelector(".le-sk-delay")?.value || 0))),
-    branch: ((li.querySelector(".le-sk-branch")?.value || "").trim() || "main"),
-    label: ((li.querySelector(".le-sk-label")?.value || "").trim()),
-    params,
-  };
-}
-
-function collectLeSkStages() {
-  const ol = document.getElementById("le_sk_stage_rows");
-  if (!ol) return [];
-  return [...ol.querySelectorAll(":scope > li.le-sk-stage")].map(serializeLeSkStageRow);
-}
-
-function reindexLeSkStages() {
-  const ol = document.getElementById("le_sk_stage_rows");
-  if (!ol) return;
-  [...ol.querySelectorAll(":scope > li.le-sk-stage")].forEach((li, i) => {
-    const badge = li.querySelector(".le-sk-idx");
-    if (badge) badge.textContent = "#" + (i + 1);
-  });
-}
-
-function clearLeSkStageRows() {
-  const ol = document.getElementById("le_sk_stage_rows");
-  if (ol) ol.innerHTML = "";
-}
-
-function addLeSkStageRow(typePref, pref) {
-  const ol = document.getElementById("le_sk_stage_rows");
-  if (!ol) return;
-  const p = pref && typeof pref === "object" ? pref : {};
-  const when0 = p.when === "delayed_ticks" ? "delayed_ticks" : "immediate";
-  const delay0 = Math.max(0, Math.trunc(Number(p.delay_ticks != null ? p.delay_ticks : 0)));
-  const branch0 = (p.branch != null ? String(p.branch) : "main").trim() || "main";
-  const label0 = p.label != null ? String(p.label) : "";
-  const paramCopy = { ...p };
-  delete paramCopy.when;
-  delete paramCopy.delay_ticks;
-  delete paramCopy.branch;
-  delete paramCopy.label;
-  const type0 = (typePref || "movement_dash").trim();
-  const li = document.createElement("li");
-  li.className = "le-sk-stage";
-  li.innerHTML = `
-    <div class="le-sk-stage-toolbar">
-      <span class="le-sk-idx mono">#</span>
-      <select class="le-sk-type">${leSkStageOptionsHtml()}</select>
-      <select class="le-sk-when">
-        <option value="immediate">immediate</option>
-        <option value="delayed_ticks">delayed_ticks</option>
-      </select>
-      <input type="number" class="le-sk-delay" min="0" step="1" title="delay_ticks" placeholder="ticks" />
-      <input type="text" class="le-sk-branch mono" placeholder="branch" />
-      <input type="text" class="le-sk-label" placeholder="label" />
-      <span class="le-sk-actions">
-        <button type="button" class="ghost mini le-sk-up">↑</button>
-        <button type="button" class="ghost mini le-sk-down">↓</button>
-        <button type="button" class="ghost mini le-sk-dup">Dup</button>
-        <button type="button" class="ghost mini le-sk-remove">Remove</button>
-      </span>
-    </div>
-    <p class="hint le-sk-type-hint" style="margin:0.35rem 0 0"></p>
-    <div class="le-sk-fields step-card" style="margin-top:0.45rem"></div>`;
-  ol.appendChild(li);
-  const typeSel = li.querySelector(".le-sk-type");
-  let lastType = (typePref || "movement_dash").trim();
-  if (typeSel && ![...typeSel.options].some((o) => o.value === lastType)) {
-    lastType = "spell_visual";
-  }
-  if (typeSel) {
-    typeSel.value = lastType;
-    typeSel.addEventListener("change", () => {
-      try {
-        const carried = readLeSkParamsFromFields(li, lastType);
-        renderLeSkFields(li, typeSel.value, carried);
-      } catch {
-        renderLeSkFields(li, typeSel.value, {});
-      }
-      lastType = typeSel.value;
-      syncLeSkStageHint(li);
-      updateLeSkCompileWarn();
-    });
-  }
-  const whenEl = li.querySelector(".le-sk-when");
-  if (whenEl) whenEl.value = when0;
-  const dEl = li.querySelector(".le-sk-delay");
-  if (dEl) dEl.value = String(delay0);
-  const bEl = li.querySelector(".le-sk-branch");
-  if (bEl) bEl.value = branch0;
-  const lEl = li.querySelector(".le-sk-label");
-  if (lEl) lEl.value = label0;
-  renderLeSkFields(li, lastType, paramCopy);
-  li.querySelector(".le-sk-up")?.addEventListener("click", () => {
-    const prev = li.previousElementSibling;
-    if (prev) ol.insertBefore(li, prev);
-    reindexLeSkStages();
-    updateLeSkCompileWarn();
-  });
-  li.querySelector(".le-sk-down")?.addEventListener("click", () => {
-    const next = li.nextElementSibling;
-    if (next) ol.insertBefore(next, li);
-    reindexLeSkStages();
-    updateLeSkCompileWarn();
-  });
-  li.querySelector(".le-sk-dup")?.addEventListener("click", () => {
-    let snap;
-    try {
-      snap = serializeLeSkStageRow(li);
-    } catch {
-      return;
-    }
-    addLeSkStageRow(snap.type, { ...snap.params, when: snap.when, delay_ticks: snap.delay_ticks, branch: snap.branch, label: snap.label });
-    updateLeSkCompileWarn();
-  });
-  li.querySelector(".le-sk-remove")?.addEventListener("click", () => {
-    li.remove();
-    reindexLeSkStages();
-    updateLeSkCompileWarn();
-  });
-  const fEl = li.querySelector(".le-sk-fields");
-  if (fEl) {
-    fEl.addEventListener("input", () => {
-      updateLeSkCompileWarn();
-      updateRowLivePreview(li);
-    });
-    fEl.addEventListener("change", () => {
-      updateLeSkCompileWarn();
-      updateRowLivePreview(li);
-    });
-  }
-  li.querySelector(".le-sk-delay")?.addEventListener("input", updateLeSkCompileWarn);
-  syncLeSkStageHint(li);
-  reindexLeSkStages();
-  updateLeSkCompileWarn();
-}
-
 function leSkFlowKindOptionsHtml(cur) {
   const kinds = [
     ["movement", "movement (dash/slide/teleport/...)"],
@@ -5313,11 +5643,13 @@ function leSkFlowKindOptionsHtml(cur) {
     ["roll", "roll (gate)"],
     ["trigger_skill_action", "trigger_skill_action (sub-action)"],
     ["totem_turret", "totem_turret (place turret)"],
-    ["melee", "melee (single sweep)"],
+    ["melee", "melee"],
     ["projectile", "projectile (fly / falling)"],
     ["ground", "ground (place line / block / entity)"],
     ["spell", "spell (legacy alias)"],
     ["ground_rupture", "ground_rupture"],
+    ["buff", "buff (apply to self)"],
+    ["debuff", "debuff (apply to target)"],
     ["trigger_effect", "trigger_effect (apply skill_effect)"],
     ["summon", "summon (cast_summon)"],
   ];
@@ -5855,6 +6187,10 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
     renderLeSkFields(nodeEl, "spell_visual", { ...p, spell_mode: mode });
     const pk = String(p.projectile_kind || "spell").trim().toLowerCase();
     const itemId = String(p.item || "").trim();
+    const ricHops = Math.max(0, Math.trunc(Number(p.projectile_ricochet_hops) || 0));
+    const ricRange = Number.isFinite(Number(p.projectile_ricochet_range)) ? Math.max(0.5, Number(p.projectile_ricochet_range)) : 8.0;
+    const ricDmg = Number.isFinite(Number(p.projectile_ricochet_damage_multiplier)) ? Math.max(0.05, Math.min(1.0, Number(p.projectile_ricochet_damage_multiplier))) : 0.85;
+    const ricHostile = (p.projectile_ricochet_hostile_only !== undefined) ? !!p.projectile_ricochet_hostile_only : true;
     const bc = Math.max(1, Math.min(32, Math.trunc(Number(p.projectile_count != null ? p.projectile_count : p.barrage_count) || 1)));
     const bd = Math.max(0, Math.trunc(Number(p.projectile_delay_ticks != null ? p.projectile_delay_ticks : p.barrage_delay_ticks) || 2));
     const bj = Math.max(0, Math.trunc(Number(p.projectile_delay_jitter_ticks != null ? p.projectile_delay_jitter_ticks : p.barrage_delay_jitter_ticks) || 0));
@@ -5893,6 +6229,18 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
         <div><label title="Random ± ticks added to each delay (0 = none).">projectile_delay_jitter_ticks</label><input class="le-flow-p-bj" type="number" min="0" step="1" value="${String(bj)}" /></div>
         <div><label title="Added to inaccuracy per extra shot index (spread grows along the volley).">projectile_inaccuracy_add</label><input class="le-flow-p-bi" type="number" min="0" step="0.05" value="${String(bi)}" /></div>
       </div>
+      <details class="le-flow-opt-details" ${leSkHasOptionalContent(p, ["projectile_ricochet_hops","projectile_ricochet_range","projectile_ricochet_damage_multiplier","projectile_ricochet_hostile_only"]) ? "open" : ""} style="margin-top:0.5rem;border:1px solid var(--border);border-radius:10px;padding:0.35rem 0.5rem">
+        <summary style="cursor:pointer;font-size:0.88rem;color:var(--muted)">Optional: ricochet (spell / arrow / item)</summary>
+        <div class="row" style="margin-top:0.35rem">
+          <div><label>projectile_ricochet_hops</label><input class="le-flow-p-ric-hops" type="number" min="0" max="16" step="1" value="${String(ricHops)}" /></div>
+          <div><label>projectile_ricochet_range</label><input class="le-flow-p-ric-range" type="number" min="0.5" step="0.25" value="${String(ricRange)}" /></div>
+        </div>
+        <div class="row">
+          <div><label>projectile_ricochet_damage_multiplier</label><input class="le-flow-p-ric-mult" type="number" min="0.05" max="1" step="0.05" value="${String(ricDmg)}" /></div>
+          <div class="inline-check" style="align-self:end;margin-top:1rem"><input class="le-flow-p-ric-hostile" type="checkbox" ${ricHostile ? "checked" : ""} /><label>projectile_ricochet_hostile_only</label></div>
+        </div>
+        <p class="hint" style="margin:0.25rem 0 0;font-size:0.78rem;color:var(--muted)">Works for <span class="mono">projectile_kind</span> <span class="mono">spell</span>, <span class="mono">arrow</span>, and <span class="mono">item</span>.</p>
+      </details>
       <p class="hint" style="margin:0.25rem 0 0;font-size:0.78rem;color:var(--muted)">Former JSON keys <span class="mono">barrage_*</span> still load; export uses <span class="mono">projectile_*</span>.</p>
     `
       : `
@@ -5933,7 +6281,7 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
   if (k === "melee") stageType = "melee_core";
   else if (k === "spell" || k === "spell_visual" || k === "projectile" || k === "ground") stageType = "spell_visual";
   else if (k === "ground_rupture") stageType = "ground_rupture";
-  else if (k === "trigger_effect") stageType = "trigger_effects";
+  else if (k === "trigger_effect" || k === "buff" || k === "debuff") stageType = "trigger_effects";
   else if (k === "summon") stageType = "cast_summon";
   else stageType = "melee_core";
 
@@ -6214,7 +6562,7 @@ function buildSkillFlowDocLe() {
         kind === "melee" ? "melee_core"
           : (kind === "spell" || kind === "spell_visual" || kind === "projectile" || kind === "ground") ? "spell_visual"
             : kind === "ground_rupture" ? "ground_rupture"
-              : kind === "trigger_effect" ? "trigger_effects"
+              : (kind === "trigger_effect" || kind === "buff" || kind === "debuff") ? "trigger_effects"
                 : kind === "summon" ? "cast_summon"
                 : "melee_core";
       params = readLeSkParamsFromFields(nodeEl, stageType);
@@ -6230,6 +6578,21 @@ function buildSkillFlowDocLe() {
         params.projectile_delay_jitter_ticks = Math.max(0, Math.trunc(Number(nodeEl.querySelector(".le-flow-p-bj")?.value) || 0));
         const bi = Number(nodeEl.querySelector(".le-flow-p-bi")?.value);
         if (Number.isFinite(bi)) params.projectile_inaccuracy_add = Math.max(0, bi);
+
+        const ricHops = Math.max(0, Math.trunc(Number(nodeEl.querySelector(".le-flow-p-ric-hops")?.value) || 0));
+        if (ricHops > 0) {
+          params.projectile_ricochet_hops = ricHops;
+          const ricRange = Number(nodeEl.querySelector(".le-flow-p-ric-range")?.value);
+          if (Number.isFinite(ricRange)) params.projectile_ricochet_range = Math.max(0.5, ricRange);
+          const ricMult = Number(nodeEl.querySelector(".le-flow-p-ric-mult")?.value);
+          if (Number.isFinite(ricMult)) params.projectile_ricochet_damage_multiplier = Math.max(0.05, Math.min(1, ricMult));
+          params.projectile_ricochet_hostile_only = !!nodeEl.querySelector(".le-flow-p-ric-hostile")?.checked;
+        } else {
+          delete params.projectile_ricochet_hops;
+          delete params.projectile_ricochet_range;
+          delete params.projectile_ricochet_damage_multiplier;
+          delete params.projectile_ricochet_hostile_only;
+        }
       } else if (kind === "ground") {
         const smSel = String(nodeEl.querySelector(".le-flow-spell-mode")?.value || "").trim();
         if (smSel) params.spell_mode = smSel;
@@ -6296,9 +6659,9 @@ function buildSkillFlowDocLe() {
 }
 
 function leSkMigrateExecutionToFlowUi(ex) {
+  leSkClearFlowNodes();
   const fw = document.getElementById("le_sk_flow_nodes");
   if (!fw) return;
-  fw.innerHTML = "";
   ex = ex && typeof ex === "object" ? ex : {};
 
   // n1: movement from execution.dash_forward (best-effort) → flow slide + derived strength.
@@ -6373,77 +6736,57 @@ function leSkMigrateExecutionToFlowUi(ex) {
 function updateLeSkCompileWarn() {
   const el = document.getElementById("le_sk_compile_warn");
   if (!el) return;
-  if (isSkillFlowExecMode()) {
-    const ids = leSkCollectFlowNodeIds();
-    if (!ids.length) {
-      el.textContent = "Flow: add at least one node.";
-      el.className = "msg err";
-      return;
-    }
-    const seen = new Set();
-    for (const id of ids) {
-      if (seen.has(id)) {
-        el.textContent = `Flow: duplicate node id "${id}".`;
-        el.className = "msg err";
-        return;
-      }
-      seen.add(id);
-    }
-    const refErr = (fromId, toId, label) => {
-      if (!toId) return null;
-      if (!seen.has(toId)) return `Flow: node "${fromId}" ${label} points at missing "${toId}".`;
-      return null;
-    };
-    const wrap = document.getElementById("le_sk_flow_nodes");
-    const nodesArr = wrap ? [...wrap.querySelectorAll(":scope > .le-flow-node")] : [];
-    for (const n of nodesArr) {
-      const fromId = String(n.querySelector(".le-flow-id")?.value || "").trim();
-      if (!fromId) continue;
-      const next = String(n.querySelector(".le-flow-next")?.value || "").trim();
-      const onStop = String(n.querySelector(".le-flow-onstop")?.value || "").trim();
-      const onPass = String(n.querySelector(".le-flow-onpass")?.value || "").trim();
-      const onFail = String(n.querySelector(".le-flow-onfail")?.value || "").trim();
-      const per = String(n.querySelector(".le-flow-hit-per")?.value || "").trim();
-      const first = String(n.querySelector(".le-flow-hit-first")?.value || "").trim();
-      const errs = [
-        refErr(fromId, next, "emit.next"),
-        refErr(fromId, onStop, "emit.on_stop"),
-        refErr(fromId, onPass, "emit.on_pass"),
-        refErr(fromId, onFail, "emit.on_fail"),
-        refErr(fromId, per, "on_hit.per_target"),
-        refErr(fromId, first, "on_hit.first_only"),
-      ].filter(Boolean);
-      if (errs.length) {
-        el.textContent = errs[0];
-        el.className = "msg err";
-        return;
-      }
-    }
-    el.textContent = "Flow: nodes OK. Entry is the first node id.";
+  if (!isSkillStagesMode()) {
+    el.textContent = "";
     el.className = "msg";
     return;
   }
-  let stages = [];
-  try {
-    stages = collectLeSkStages();
-  } catch (e) {
-    el.textContent = String(e.message || e);
+  const ids = leSkCollectFlowNodeIds();
+  if (!ids.length) {
+    el.textContent = "Flow: add at least one node.";
     el.className = "msg err";
     return;
   }
-  const types = stages.map((s) => s.type).filter(Boolean);
-  const nMelee = types.filter((t) => t === "melee_core").length;
-  const nBuff = types.filter((t) => t === "buff_pipeline").length;
-  const nSpell = types.filter((t) => t === "spell_visual").length;
-  const nGr = types.filter((t) => t === "ground_rupture").length;
-  const parts = [];
-  if (nMelee > 1) parts.push("multiple melee_core — last wins on shared keys");
-  if (nBuff > 1) parts.push("multiple buff_pipeline — last overwrites steps");
-  if (nMelee && nBuff) parts.push("melee_core + buff_pipeline — later stage sets execution.type last");
-  if (nSpell > 1) parts.push("multiple spell_visual — later stage overwrites same execution keys");
-  if (nGr > 1) parts.push("multiple ground_rupture — later stage overwrites");
-  if (nSpell && nGr) parts.push("spell_visual + ground_rupture — last stage wins on execution.type");
-  el.textContent = parts.length ? "Note: " + parts.join(" · ") : "Stages compile top → bottom. delayed_ticks uses cast_timed_actions where supported.";
+  const seen = new Set();
+  for (const id of ids) {
+    if (seen.has(id)) {
+      el.textContent = `Flow: duplicate node id "${id}".`;
+      el.className = "msg err";
+      return;
+    }
+    seen.add(id);
+  }
+  const refErr = (fromId, toId, label) => {
+    if (!toId) return null;
+    if (!seen.has(toId)) return `Flow: node "${fromId}" ${label} points at missing "${toId}".`;
+    return null;
+  };
+  const wrap = document.getElementById("le_sk_flow_nodes");
+  const nodesArr = wrap ? [...wrap.querySelectorAll(":scope > .le-flow-node")] : [];
+  for (const n of nodesArr) {
+    const fromId = String(n.querySelector(".le-flow-id")?.value || "").trim();
+    if (!fromId) continue;
+    const next = String(n.querySelector(".le-flow-next")?.value || "").trim();
+    const onStop = String(n.querySelector(".le-flow-onstop")?.value || "").trim();
+    const onPass = String(n.querySelector(".le-flow-onpass")?.value || "").trim();
+    const onFail = String(n.querySelector(".le-flow-onfail")?.value || "").trim();
+    const per = String(n.querySelector(".le-flow-hit-per")?.value || "").trim();
+    const first = String(n.querySelector(".le-flow-hit-first")?.value || "").trim();
+    const errs = [
+      refErr(fromId, next, "emit.next"),
+      refErr(fromId, onStop, "emit.on_stop"),
+      refErr(fromId, onPass, "emit.on_pass"),
+      refErr(fromId, onFail, "emit.on_fail"),
+      refErr(fromId, per, "on_hit.per_target"),
+      refErr(fromId, first, "on_hit.first_only"),
+    ].filter(Boolean);
+    if (errs.length) {
+      el.textContent = errs[0];
+      el.className = "msg err";
+      return;
+    }
+  }
+  el.textContent = "Flow: nodes OK. Entry is the first node id.";
   el.className = "msg";
 }
 
@@ -6458,12 +6801,35 @@ function appendLeSkSkillTreeTooltip(doc) {
   }
 }
 
-function importExecutionFallbackStages(ex) {
-  if (!ex || typeof ex !== "object") return;
+function leSkPushImportStage(arr, type, params, meta) {
+  meta = meta || {};
+  const pr = params && typeof params === "object" && !Array.isArray(params) ? { ...params } : {};
+  delete pr.when;
+  delete pr.delay_ticks;
+  delete pr.branch;
+  delete pr.label;
+  const whenRaw = meta.when != null ? meta.when : "immediate";
+  const when = String(whenRaw).trim() === "delayed_ticks" ? "delayed_ticks" : "immediate";
+  const delay_ticks = Math.max(0, Math.trunc(Number(meta.delay_ticks != null ? meta.delay_ticks : 0)));
+  const branch = (meta.branch != null ? String(meta.branch) : "main").trim() || "main";
+  const label = meta.label != null ? String(meta.label) : "";
+  arr.push({
+    type: String(type || "spell_visual").trim() || "spell_visual",
+    when,
+    delay_ticks,
+    branch,
+    label,
+    params: pr,
+  });
+}
+
+function leSkCollectImportStagesFromPlainExecution(ex) {
+  const out = [];
+  if (!ex || typeof ex !== "object") return out;
   const ty = String(ex.type || "").trim().toLowerCase();
   if (ex.cast_animation || ex.player_animation || ex.lock_model_rotation === false || ex.animation_lock_movement === true) {
     const pa = ex.player_animation && typeof ex.player_animation === "object" ? ex.player_animation : null;
-    addLeSkStageRow("cast_presentation", {
+    leSkPushImportStage(out, "cast_presentation", {
       cast_animation: ex.cast_animation != null ? String(ex.cast_animation) : "none",
       player_animation_clip: pa ? String(pa.animation || pa.id || "").trim() : "",
       player_animation_priority: pa && pa.priority != null ? Number(pa.priority) : 210,
@@ -6475,7 +6841,7 @@ function importExecutionFallbackStages(ex) {
   if (ex.dash_forward && typeof ex.dash_forward === "object") {
     const d = ex.dash_forward;
     const dist = Number(d.distance != null ? d.distance : d.max_distance);
-    addLeSkStageRow("movement_dash", {
+    leSkPushImportStage(out, "movement_dash", {
       max_blocks: Number.isFinite(dist) ? dist : 6,
       min_travel: d.min_travel,
       smooth_ticks: d.smooth_ticks != null ? d.smooth_ticks : -1,
@@ -6483,13 +6849,12 @@ function importExecutionFallbackStages(ex) {
       stop_on_entity: d.check_entities === true,
     });
   }
-  // Movement: support both modern `caster_look_motion` and legacy-ish `movement.slide`.
-  // (The stage compiler currently emits `caster_look_motion`.)
-  const slide = ex.movement && typeof ex.movement === "object" && ex.movement.slide && typeof ex.movement.slide === "object"
-    ? ex.movement.slide
-    : null;
+  const slide =
+    ex.movement && typeof ex.movement === "object" && ex.movement.slide && typeof ex.movement.slide === "object"
+      ? ex.movement.slide
+      : null;
   if (slide) {
-    addLeSkStageRow("move_forward", {
+    leSkPushImportStage(out, "move_forward", {
       strength: slide.strength,
       horizontal_only: slide.horizontal_only,
       combine: slide.combine,
@@ -6500,11 +6865,11 @@ function importExecutionFallbackStages(ex) {
       _import_movement_note: "Imported from execution.movement.slide; exports as caster_look_motion.",
     });
   } else if (ex.caster_look_motion && typeof ex.caster_look_motion === "object") {
-    addLeSkStageRow("move_forward", ex.caster_look_motion);
+    leSkPushImportStage(out, "move_forward", ex.caster_look_motion);
   }
   if (ex.dash_into_target && typeof ex.dash_into_target === "object") {
     const g = ex.dash_into_target;
-    addLeSkStageRow("movement_gap_close", {
+    leSkPushImportStage(out, "movement_gap_close", {
       max_distance: g.max_distance,
       stop_buffer: g.stop_buffer,
       min_travel: g.min_travel,
@@ -6525,7 +6890,7 @@ function importExecutionFallbackStages(ex) {
       }
     }
     if (picked && picked.effect) {
-      addLeSkStageRow("trigger_effects", {
+      leSkPushImportStage(out, "trigger_effects", {
         effect: String(picked.effect || "").trim(),
         chance: picked.chance != null ? Number(picked.chance) : 1,
         stacks: picked.stacks != null ? Number(picked.stacks) : 1,
@@ -6543,7 +6908,7 @@ function importExecutionFallbackStages(ex) {
     }
   }
   if (ty === "melee") {
-    addLeSkStageRow("melee_core", {
+    leSkPushImportStage(out, "melee_core", {
       reach: ex.reach,
       damage_ratio_each: ex.damage_ratio_each != null ? ex.damage_ratio_each : ex.damage_ratio,
       damage_stat: ex.damage_stat,
@@ -6568,26 +6933,66 @@ function importExecutionFallbackStages(ex) {
     else if (ex.graph && typeof ex.graph === "object") {
       steps = leLinearizeBuffGraphToSteps(ex.graph);
     }
-    addLeSkStageRow("buff_pipeline", { steps });
+    leSkPushImportStage(out, "buff_pipeline", { steps });
   } else if (ty === "spell") {
     const clone = JSON.parse(JSON.stringify(ex));
     delete clone.type;
-    addLeSkStageRow("spell_visual", clone);
+    leSkPushImportStage(out, "spell_visual", clone);
   } else if (ty === "ground_rupture") {
     const clone = JSON.parse(JSON.stringify(ex));
     delete clone.type;
-    addLeSkStageRow("ground_rupture", clone);
+    leSkPushImportStage(out, "ground_rupture", clone);
   } else if (ty) {
-    addLeSkStageRow("spell_visual", {
+    leSkPushImportStage(out, "spell_visual", {
       damage_stat: ex.damage_stat != null ? String(ex.damage_stat) : "magic_attack",
       damage_ratio: ex.damage_ratio != null ? Number(ex.damage_ratio) : 1,
       cast_animation: ex.cast_animation != null ? String(ex.cast_animation) : "none",
       _import_unknown_execution_type: ty,
     });
   }
+  return out;
 }
 
-function importSkillStagesFromDocLe(doc) {
+function leSkDocChainToImportStages(doc) {
+  const out = [];
+  const chain = doc[LE_SKILL_STAGES_KEY] || doc.lost_essence_builder_universal_chain;
+  if (!Array.isArray(chain) || !chain.length) return out;
+  for (const s of chain) {
+    if (!s || typeof s !== "object") continue;
+    let t = String(s.type || "").trim();
+    const pr = { ...(s.params && typeof s.params === "object" ? s.params : {}) };
+    const meta = { when: s.when, delay_ticks: s.delay_ticks, branch: s.branch, label: s.label };
+    if (t === "raw_execution_merge") {
+      let inner = {};
+      try {
+        const raw = pr.json != null ? String(pr.json) : "";
+        inner = raw ? JSON.parse(raw) : {};
+      } catch {
+        inner = {};
+      }
+      const innerTy = String(inner.type || "").trim().toLowerCase();
+      delete inner.type;
+      if (innerTy === "spell") {
+        t = "spell_visual";
+        Object.assign(pr, inner);
+        delete pr.json;
+      } else if (innerTy === "ground_rupture") {
+        t = "ground_rupture";
+        Object.assign(pr, inner);
+        delete pr.json;
+      } else {
+        t = "spell_visual";
+        Object.assign(pr, inner);
+        delete pr.json;
+        if (innerTy) pr._import_unknown_execution_type = innerTy;
+      }
+    }
+    leSkPushImportStage(out, t || "spell_visual", pr, meta);
+  }
+  return out;
+}
+
+function importSkillActionFromDocLe(doc) {
   if (!doc || typeof doc !== "object") throw new Error("Not a JSON object.");
   const sid = (doc.skill_id || "").trim();
   document.getElementById("le_sk_skill_id").value = sid;
@@ -6627,16 +7032,12 @@ function importSkillStagesFromDocLe(doc) {
   const ex = doc.execution && typeof doc.execution === "object" ? doc.execution : {};
   const castEl = document.getElementById("le_sk_casting_time");
   if (castEl) castEl.value = String(ex.casting_time_seconds != null ? ex.casting_time_seconds : "");
-  // Flow execution import.
   const ty = String(ex.type || "").trim().toLowerCase();
-  const execModelSel = document.getElementById("le_sk_exec_model");
+  leSkClearFlowNodes();
+
   if (ty === "flow" && ex.nodes && typeof ex.nodes === "object" && !Array.isArray(ex.nodes)) {
-    if (execModelSel) execModelSel.value = "flow";
-    applyBuilderModeUi();
-    // Clear both editors; fill flow.
-    clearLeSkStageRows();
-    const fw = document.getElementById("le_sk_flow_nodes");
-    if (fw) fw.innerHTML = "";
+    // Do not call applyBuilderModeUi() here: it auto-adds a default "n1" movement node when the flow list is
+    // empty, which would duplicate the first real node from JSON and break emit links.
     const entry = String(ex.entry || "").trim();
     const keys = Object.keys(ex.nodes || {});
     const order = entry && keys.includes(entry) ? [entry].concat(keys.filter((k) => k !== entry)) : keys;
@@ -6644,8 +7045,8 @@ function importSkillStagesFromDocLe(doc) {
       const n = ex.nodes[id];
       if (!n || typeof n !== "object") continue;
       let kind = String(n.kind || "").trim();
-      const params = (n.params && typeof n.params === "object" && !Array.isArray(n.params)) ? n.params : {};
-      const emit = (n.emit && typeof n.emit === "object" && !Array.isArray(n.emit)) ? n.emit : {};
+      const params = n.params && typeof n.params === "object" && !Array.isArray(n.params) ? n.params : {};
+      const emit = n.emit && typeof n.emit === "object" && !Array.isArray(n.emit) ? n.emit : {};
       if (kind === "spell_visual" || kind === "spell") {
         const sm = String(params.spell_mode || "").trim().toLowerCase();
         kind = sm.startsWith("projectile") ? "projectile" : "ground";
@@ -6658,108 +7059,32 @@ function importSkillStagesFromDocLe(doc) {
     return;
   }
 
-  // Non-flow import: populate stages (legacy) and also offer a best-effort flow migration.
-  if (execModelSel) execModelSel.value = "stages";
-  clearLeSkStageRows();
-  const chain = doc[LE_SKILL_STAGES_KEY] || doc.lost_essence_builder_universal_chain;
-  if (Array.isArray(chain) && chain.length) {
-    for (const s of chain) {
-      if (!s || typeof s !== "object") continue;
-      let t = String(s.type || "").trim();
-      const pr = { ...(s.params && typeof s.params === "object" ? s.params : {}) };
-      if (s.when != null) pr.when = s.when;
-      if (s.delay_ticks != null) pr.delay_ticks = s.delay_ticks;
-      if (s.branch != null) pr.branch = s.branch;
-      if (s.label != null) pr.label = s.label;
-      if (t === "raw_execution_merge") {
-        let inner = {};
-        try {
-          const raw = pr.json != null ? String(pr.json) : "";
-          inner = raw ? JSON.parse(raw) : {};
-        } catch {
-          inner = {};
-        }
-        const innerTy = String(inner.type || "").trim().toLowerCase();
-        delete inner.type;
-        if (innerTy === "spell") {
-          t = "spell_visual";
-          Object.assign(pr, inner);
-          delete pr.json;
-        } else if (innerTy === "ground_rupture") {
-          t = "ground_rupture";
-          Object.assign(pr, inner);
-          delete pr.json;
-        } else {
-          t = "spell_visual";
-          Object.assign(pr, inner);
-          delete pr.json;
-          if (innerTy) pr._import_unknown_execution_type = innerTy;
-        }
-      }
-      addLeSkStageRow(t || "spell_visual", pr);
-    }
+  let stages = leSkDocChainToImportStages(doc);
+  if (!stages.length) {
+    stages = leSkCollectImportStagesFromPlainExecution(ex);
+  }
+  if (!stages.length) {
+    addLeSkFlowNode("movement", {
+      params: {
+        movement_type: "slide",
+        direction: "forward",
+        strength: 1,
+        delay_resolve_ticks: 4,
+        horizontal_only: true,
+        combine: "add",
+      },
+    });
   } else {
-    importExecutionFallbackStages(ex);
+    const execution = {};
+    if (ex.casting_time_seconds != null && Number(ex.casting_time_seconds) > 0) {
+      execution.casting_time_seconds = ex.casting_time_seconds;
+    }
+    leApplyStagesToExecution(execution, stages);
+    leSkMigrateExecutionToFlowUi(execution);
   }
-  if (!document.querySelector("#le_sk_stage_rows li.le-sk-stage")) {
-    addLeSkStageRow("movement_dash", { max_blocks: 4, stop_on_block: true, stop_on_entity: true });
-  }
+  refreshLeSkFlowEdgeSelects();
   leSkSyncTriggerEffectLevelsToSkillRank();
   updateLeSkCompileWarn();
-}
-
-function leSkSanitizeParamsForMeta(p) {
-  if (!p || typeof p !== "object" || Array.isArray(p)) return {};
-  const o = { ...p };
-  Object.keys(o).forEach((k) => {
-    if (k.startsWith("_import")) delete o[k];
-  });
-  return o;
-}
-
-/**
- * @param {{ includeStagesMetadata?: boolean }} [options] — When {@code includeStagesMetadata} is true, adds
- * {@code lost_essence_skill_stages_v1} for le-builder round-trip. Default false (datapack / default preview shape).
- */
-function buildSkillStagesDocLe(options) {
-  const includeStagesMetadata = options && options.includeStagesMetadata === true;
-  const skill_id = (document.getElementById("le_sk_skill_id")?.value || "").trim();
-  if (!skill_id) throw new Error("Enter skill_id (must match skill_nodes.skill_action_id).");
-  const stages = collectLeSkStages();
-  if (!stages.length) throw new Error("Add at least one stage.");
-  const execution = {};
-  const castRaw = (document.getElementById("le_sk_casting_time")?.value || "").trim();
-  if (castRaw !== "") {
-    const c = Math.max(0, Number(castRaw));
-    if (Number.isFinite(c) && c > 0) execution.casting_time_seconds = c;
-  }
-  leApplyStagesToExecution(execution, stages);
-  const stagesMeta = stages.map((s) => ({ ...s, params: leSkSanitizeParamsForMeta(s.params) }));
-  const doc = {
-    skill_id,
-    stamina_cost: Math.max(0, Number(document.getElementById("le_sk_stamina")?.value) || 0),
-    mana_cost: Math.max(0, Number(document.getElementById("le_sk_mana")?.value) || 0),
-    cooldown_seconds: Math.max(0, Number(document.getElementById("le_sk_cooldown")?.value) || 0),
-    execution,
-  };
-  if (includeStagesMetadata) {
-    doc[LE_SKILL_STAGES_KEY] = stagesMeta;
-  }
-  const cds = (document.getElementById("le_sk_cooldown_skill_id")?.value || "").trim();
-  if (cds) doc.cooldown_skill_id = cds;
-  const hb = document.getElementById("le_sk_hotbar_bindable");
-  if (hb && !hb.checked) doc.hotbar_bindable = false;
-  const gearCsv = (document.getElementById("le_sk_requires_gear_types")?.value || "").trim();
-  if (gearCsv) {
-    const arr = gearCsv.split(",").map((s) => String(s).trim().toLowerCase()).filter(Boolean);
-    if (arr.length) doc.requires_gear_types = arr;
-  }
-  const skillAttr = (document.getElementById("le_sk_skill_attribute")?.value || "").trim().toLowerCase();
-  if (skillAttr) doc.skill_attribute = skillAttr;
-  const reqSkFx = (document.getElementById("le_sk_requires_active_skill_effect")?.value || "").trim();
-  if (reqSkFx) doc.requires_active_skill_effect = reqSkFx;
-  appendLeSkSkillTreeTooltip(doc);
-  return doc;
 }
 
     function leGv(id) {
@@ -7470,13 +7795,40 @@ function buildSkillStagesDocLe(options) {
         }
         return { kind: "passive_mastery", count: 1 };
       }
+      if (looksLikeFoodCategoryDoc(root)) {
+        const fcRadio = document.querySelector('input[name="le_builder_mode"][value="food_category"]');
+        if (fcRadio) fcRadio.checked = true;
+        applyBuilderModeUi();
+        importFoodCategoryFromDoc(root, opts);
+        try {
+          const rebuilt = buildFoodCategoryDoc();
+          out.value = JSON.stringify(rebuilt != null ? rebuilt : root, null, 2);
+        } catch {
+          out.value = JSON.stringify(root, null, 2);
+        }
+        return { kind: "food_category", count: 1 };
+      }
+      if (looksLikePotionEffectsDoc(root)) {
+        const peRadio = document.querySelector('input[name="le_builder_mode"][value="potion_effects"]');
+        if (peRadio) peRadio.checked = true;
+        applyBuilderModeUi();
+        importPotionEffectsFromDoc(root, opts);
+        try {
+          const rebuilt = buildPotionEffectsDoc();
+          out.value = JSON.stringify(rebuilt != null ? rebuilt : root, null, 2);
+        } catch {
+          out.value = JSON.stringify(root, null, 2);
+        }
+        return { kind: "potion_effects", count: 1 };
+      }
       if (looksLikeSkillStagesImportDoc(root)) {
         const skRadio = document.querySelector('input[name="le_builder_mode"][value="skill_stages"]');
         if (skRadio) skRadio.checked = true;
+        leSkClearFlowNodes();
         applyBuilderModeUi();
-        importSkillStagesFromDocLe(root);
+        importSkillActionFromDocLe(root);
         try {
-          out.value = JSON.stringify(buildSkillStagesDocLe({ includeStagesMetadata: false }), null, 2);
+          out.value = JSON.stringify(buildSkillFlowDocLe(), null, 2);
         } catch {
           out.value = JSON.stringify(root, null, 2);
         }
@@ -7836,20 +8188,23 @@ function buildSkillStagesDocLe(options) {
         });
       }
 
-      const leSkStageHost = document.getElementById("le_sk_stage_rows");
+      const leSkStageHost = document.getElementById("le_skill_stages_workspace");
       if (leSkStageHost) {
         const leSkStageFxHost = (e) => {
           const el = e.target;
           if (!el || !el.closest) return null;
+          if (!leSkStageHost.contains(el)) return null;
           if (el.closest(".le-sk-buff-wrap")) {
             const row = el.closest(".step-row");
             if (!row) return null;
             return { kind: "buff", row };
           }
-          const st = el.closest("li.le-sk-stage");
-          if (!st || !st.classList.contains("le-sk-stage") || !el.closest(".le-sk-fields")) return null;
-          if (String(st.querySelector(".le-sk-type")?.value || "").trim() !== "cast_summon") return null;
-          return { kind: "cast_summon", row: st };
+          const flowNode = el.closest(".le-flow-node");
+          if (flowNode && el.closest(".le-sk-fields")) {
+            const fk = String(flowNode.querySelector(".le-flow-kind")?.value || "").trim();
+            if (fk === "summon") return { kind: "cast_summon", row: flowNode };
+          }
+          return null;
         };
         leSkStageHost.addEventListener("click", (e) => {
           const host = leSkStageFxHost(e);
@@ -7993,25 +8348,8 @@ function buildSkillStagesDocLe(options) {
     fillDatalist("le_dl_mob_effects", COMMON_MOB_EFFECTS);
     fillDatalist("le_dl_entity_types", COMMON_ENTITY_TYPES);
 
-    document.getElementById("le_sk_add_stage")?.addEventListener("click", () => {
-      addLeSkStageRow("movement_dash", { max_blocks: 4, stop_on_block: true, stop_on_entity: true });
-    });
     document.getElementById("le_sk_flow_add_node")?.addEventListener("click", () => {
       addLeSkFlowNode("movement", { params: { movement_type: "slide", direction: "forward", strength: 1, delay_resolve_ticks: 4, horizontal_only: true, combine: "add" } });
-    });
-    document.getElementById("le_sk_exec_model")?.addEventListener("change", () => {
-      applyBuilderModeUi();
-      const flowWrap = document.getElementById("le_sk_flow_nodes");
-      if (isSkillFlowExecMode() && flowWrap && !flowWrap.querySelector(".le-flow-node")) {
-        // Best-effort migration from current legacy execution if stage rows exist.
-        try {
-          const legacy = buildSkillStagesDocLe({ includeStagesMetadata: false });
-          leSkMigrateExecutionToFlowUi(legacy.execution || {});
-        } catch {
-          addLeSkFlowNode("movement", { params: { movement_type: "slide", direction: "forward", strength: 1, delay_resolve_ticks: 4, horizontal_only: true, combine: "add" } });
-        }
-      }
-      updateLeSkCompileWarn();
     });
     const leSkSkillIdEl = document.getElementById("le_sk_skill_id");
     const onLeSkSkillIdEdited = () => {
@@ -8048,6 +8386,7 @@ function buildSkillStagesDocLe(options) {
         wrap.querySelectorAll(".step-row").forEach(updateRowLivePreview);
       }
       document.querySelectorAll(".le-sk-buff-wrap .step-row").forEach(updateRowLivePreview);
+      document.querySelectorAll("#le_sk_flow_nodes > .le-flow-node").forEach(updateRowLivePreview);
     }
 
     document.getElementById("pv_max_health")?.addEventListener("input", refreshAllLivePreviews);
@@ -8081,7 +8420,7 @@ function buildSkillStagesDocLe(options) {
         } else if (res.kind === "gear_affix") {
           note += " (gear affix)";
         } else if (res.kind === "skill_stages") {
-          note += " (skill_action — stages)";
+          note += " (skill_action — flow)";
         }
         msg.textContent = note;
         msg.className = "msg ok";
@@ -8112,23 +8451,11 @@ function buildSkillStagesDocLe(options) {
         } else if (res.kind === "gear_affix") {
           note = "Imported gear affix JSON.";
         } else if (res.kind === "skill_stages") {
-          note = "Imported skill_action (Skill stages mode).";
+          note = "Imported skill_action (flow editor).";
         }
         msg.textContent = note;
         msg.className = "msg ok";
       } catch (e) {
-        msg.textContent = e.message || String(e);
-        msg.className = "msg err";
-      }
-    });
-
-    document.getElementById("btn_preview_skill_stages_meta")?.addEventListener("click", () => {
-      try {
-        out.value = JSON.stringify(buildSkillStagesDocLe({ includeStagesMetadata: true }), null, 2);
-        msg.textContent = "skill_action JSON with lost_essence_skill_stages_v1 (for exact re-import in this builder).";
-        msg.className = "msg ok";
-      } catch (e) {
-        out.value = "";
         msg.textContent = e.message || String(e);
         msg.className = "msg err";
       }
@@ -8139,6 +8466,28 @@ function buildSkillStagesDocLe(options) {
         if (isPassiveMode()) {
           out.value = JSON.stringify(buildPassiveMasteryDoc(), null, 2);
           msg.textContent = "Passive / mastery skill_action JSON ready.";
+          msg.className = "msg ok";
+          return;
+        }
+        if (isPotionEffectsMode()) {
+          const peDoc = buildPotionEffectsDoc();
+          if (peDoc == null) {
+            msg.className = "msg err";
+            return;
+          }
+          out.value = JSON.stringify(peDoc, null, 2);
+          msg.textContent = "potion_effects JSON ready — save under data/<ns>/potion_effects/.";
+          msg.className = "msg ok";
+          return;
+        }
+        if (isFoodCategoryMode()) {
+          const fcDoc = buildFoodCategoryDoc();
+          if (fcDoc == null) {
+            msg.className = "msg err";
+            return;
+          }
+          out.value = JSON.stringify(fcDoc, null, 2);
+          msg.textContent = "food_category JSON ready — save under data/<ns>/food_category/.";
           msg.className = "msg ok";
           return;
         }
@@ -8157,13 +8506,8 @@ function buildSkillStagesDocLe(options) {
           return;
         }
         if (isSkillStagesMode()) {
-          if (isSkillFlowExecMode()) {
-            out.value = JSON.stringify(buildSkillFlowDocLe(), null, 2);
-            msg.textContent = "skill_action JSON (execution.type: flow) ready — save under data/<ns>/skill_actions/.";
-          } else {
-            out.value = JSON.stringify(buildSkillStagesDocLe({ includeStagesMetadata: false }), null, 2);
-            msg.textContent = "skill_action JSON ready — save under data/<ns>/skill_actions/. Default preview omits lost_essence_skill_stages_v1; use Preview JSON (stage metadata) for round-trip import.";
-          }
+          out.value = JSON.stringify(buildSkillFlowDocLe(), null, 2);
+          msg.textContent = "skill_action JSON (execution.type: flow) ready — save under data/<ns>/skill_actions/.";
           msg.className = "msg ok";
           return;
         }
@@ -8285,9 +8629,10 @@ function buildSkillStagesDocLe(options) {
         const res = importAnyLostEssenceJson(text, { fileName: file.name });
         let note = `Imported: ${file.name}`;
         if (res.kind === "passive_mastery") note += " (passive / mastery)";
+        else if (res.kind === "food_category") note += " (food_category)";
         else if (res.kind === "mob_affix") note += " (mob affix)";
         else if (res.kind === "gear_affix") note += " (gear affix)";
-        else if (res.kind === "skill_stages") note += " (skill_action — stages)";
+        else if (res.kind === "skill_stages") note += " (skill_action — flow)";
         msg.textContent = note;
         msg.className = "msg ok";
       } catch (err) {
@@ -8313,13 +8658,80 @@ function buildSkillStagesDocLe(options) {
 
     document.getElementById("le_gf_add_stat")?.addEventListener("click", () => leGfAddStatRow(null));
 
+    document.getElementById("le_fc_id")?.addEventListener("input", () => {
+      const raw = (document.getElementById("le_fc_id").value || "").trim();
+      const fn = document.getElementById("le_fc_filename");
+      if (!fn) return;
+      const path = raw.includes(":") ? raw.split(":").pop() : raw;
+      const stem = path.includes("/") ? path.split("/").pop() : path;
+      if (stem) fn.value = stem.replace(/[^a-z0-9_-]/gi, "_") + ".json";
+    });
+
+    document.getElementById("le_fc_add_stat")?.addEventListener("click", () => leFcAddStatRow(null));
+    document.getElementById("le_pe_add_stat")?.addEventListener("click", () => peAddStatRow(null));
+    document.getElementById("le_pe_amp_any")?.addEventListener("change", () => {
+      const any = !!document.getElementById("le_pe_amp_any").checked;
+      const amp = document.getElementById("le_pe_amp");
+      if (amp) amp.disabled = any;
+    });
+
     applyBuilderModeUi();
 
     document.getElementById("btn_download").addEventListener("click", () => {
+      if (isPotionEffectsMode()) {
+        let text;
+        try {
+          const peDoc = buildPotionEffectsDoc();
+          if (peDoc == null) {
+            msg.className = "msg err";
+            return;
+          }
+          text = JSON.stringify(peDoc, null, 2);
+        } catch (e) {
+          msg.textContent = e.message || String(e);
+          msg.className = "msg err";
+          return;
+        }
+        const name = ((document.getElementById("le_pe_filename").value || "").trim() || "potion_effects.json");
+        const blob = new Blob([text], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        msg.textContent = "Downloaded potion_effects.";
+        msg.className = "msg ok";
+        return;
+      }
+      if (isFoodCategoryMode()) {
+        let text;
+        try {
+          const fcDoc = buildFoodCategoryDoc();
+          if (fcDoc == null) {
+            msg.className = "msg err";
+            return;
+          }
+          text = JSON.stringify(fcDoc, null, 2);
+        } catch (e) {
+          msg.textContent = e.message || String(e);
+          msg.className = "msg err";
+          return;
+        }
+        const name = ((document.getElementById("le_fc_filename").value || "").trim() || "food_category.json");
+        const blob = new Blob([text], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        msg.textContent = "Downloaded food_category.";
+        msg.className = "msg ok";
+        return;
+      }
       if (isSkillStagesMode()) {
         let text;
         try {
-          text = JSON.stringify(isSkillFlowExecMode() ? buildSkillFlowDocLe() : buildSkillStagesDocLe({ includeStagesMetadata: false }), null, 2);
+          text = JSON.stringify(buildSkillFlowDocLe(), null, 2);
         } catch (e) {
           msg.textContent = e.message || String(e);
           msg.className = "msg err";
@@ -8332,15 +8744,15 @@ function buildSkillStagesDocLe(options) {
         a.download = name;
         a.click();
         URL.revokeObjectURL(a.href);
-        msg.textContent = isSkillFlowExecMode()
-          ? "Downloaded skill_action (flow)."
-          : "Downloaded skill_action (no stage metadata).";
+        msg.textContent = "Downloaded skill_action (flow).";
         msg.className = "msg ok";
         return;
       }
       if (!out.value) document.getElementById("btn_preview").click();
       if (!out.value) return;
-      const name = isPassiveMode()
+      const name = isFoodCategoryMode()
+        ? ((document.getElementById("le_fc_filename").value || "").trim() || "food_category.json")
+        : isPassiveMode()
         ? ((document.getElementById("pm_filename").value || "").trim() || "passive_skill.json")
         : isMobAffixMode()
           ? ((document.getElementById("le_ma_filename").value || "").trim() || "mob_affix.json")
