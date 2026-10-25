@@ -1,0 +1,3 @@
+Preview sprites from Snowstorm by JannisX11
+https://github.com/JannisX11/snowstorm
+Licensed under GNU GPL v3. Used here as particle-studio preview assets.
