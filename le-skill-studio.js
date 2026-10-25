@@ -22,17 +22,19 @@
   ];
 
   const RECIPES = [
-    { id: "bolt", name: "Fire Bolt", sub: "Cast → Particle → Sound → Projectile", icon: "🔥" },
+    { id: "bolt", name: "Fireball", sub: "Cast → Particle → Sound → Projectile → On Hit → Damage", icon: "🔥" },
+    { id: "dice", name: "Lucky Dice", sub: "Cast → Roll → If compare → Damage / Buff / Jackpot", icon: "🎲" },
+    { id: "summoner", name: "Spirit Wolf", sub: "Cast → Summon → behavior_skill_id → On Death / On Expire", icon: "🐺" },
+    { id: "trap", name: "Poison Trap", sub: "Cast → Ground Zone, arm → On Enter → Damage → Debuff → Despawn", icon: "◎" },
+    { id: "berserker", name: "Berserker Combo", sub: "Cast → Damage → Save rage → If rage → extra attack", icon: "⚔" },
     { id: "channel", name: "Channel", sub: "hold + replay until channel ends", icon: "⏳" },
     { id: "arrow_rain", name: "Arrow Rain", sub: "skyfall arrows — set item / entity id", icon: "🏹" },
     { id: "falling", name: "Falling Cube", sub: "block meteor — set block id", icon: "⬛" },
-    { id: "trap", name: "Trap", sub: "Ground → on_enter → damage", icon: "◎" },
     { id: "totem", name: "Totem", sub: "summon + on_tick (scan/hit/look)", icon: "⌂" },
     { id: "meteor", name: "Meteor", sub: "Look ground → falling block", icon: "☄" },
     { id: "pull", name: "Pull", sub: "Radius + damage + pull", icon: "↩" },
     { id: "taunt", name: "Taunt", sub: "Radius → aggro", icon: "!" },
     { id: "heal", name: "Heal Song", sub: "instant → heal + restore + buff", icon: "♪" },
-    { id: "dice", name: "Lucky Dice", sub: "Roll 1–100 → weighted outcomes", icon: "🎲" },
     { id: "lucky_strike", name: "Lucky Strike", sub: "If / Else 50% buff or damage", icon: "☘" },
   ];
 
@@ -156,6 +158,17 @@
     if (typeof addLeSkFlowNode !== "function") return;
     const from = (typeof LE_SK_FLOW !== "undefined") ? LE_SK_FLOW.selected : null;
     const params = { ...(spec.params || {}) };
+    const isCast = spec.kind === "delivery" && String((spec.params || {}).mode || "instant") === "instant";
+    if (isCast && typeof leSkFlowCastNodes === "function") {
+      const existing = leSkFlowCastNodes()[0];
+      if (existing) {
+        if (typeof leSkFlowSelectNode === "function") leSkFlowSelectNode(existing);
+        if (typeof leSkFlowSetLinkHint === "function") {
+          leSkFlowSetLinkHint("This skill already has When Skill Cast. Costs stay in Skill Settings.");
+        }
+        return;
+      }
+    }
     const fromKind = from ? String(from.querySelector(".le-flow-kind")?.value || "") : "";
     const fromMode = from
       ? String(from.querySelector(".le-flow-del-mode")?.value || from.querySelector(".le-flow-spell-mode")?.value || "")
@@ -215,6 +228,35 @@
     leSkFlowWire(from, port, toId);
   }
 
+  function ensureCastStart() {
+    const wrap = $("le_sk_flow_nodes");
+    if (!wrap) return;
+    const list = [...wrap.querySelectorAll(":scope > .le-flow-node")];
+    if (!list.length) return;
+    const isCast = typeof leSkFlowIsCastNode === "function"
+      ? leSkFlowIsCastNode
+      : (n) => String(n.querySelector(".le-flow-kind")?.value || "") === "delivery"
+        && String(n.querySelector(".le-flow-del-mode")?.value || "instant") === "instant";
+    let cast = list.find(isCast);
+    if (!cast) {
+      const wasBatch = !!LE_SK_FLOW.batch;
+      LE_SK_FLOW.batch = true;
+      addLeSkFlowNode("delivery", { id: "cast", params: { mode: "instant" } });
+      LE_SK_FLOW.batch = wasBatch;
+      cast = wrap.querySelector(":scope > .le-flow-node:last-child");
+    }
+    if (!cast) return;
+    if (wrap.firstElementChild !== cast) {
+      const oldFirst = wrap.firstElementChild;
+      wrap.insertBefore(cast, wrap.firstElementChild);
+      const oldId = String(oldFirst?.querySelector(".le-flow-id")?.value || "").trim();
+      const nextSel = cast.querySelector(".le-flow-next");
+      if (oldId && nextSel && !String(nextSel.value || "").trim() && typeof leSkFlowWire === "function") {
+        leSkFlowWire(cast, "next", oldId);
+      }
+    }
+  }
+
   function stampRecipe(id, opts) {
     if (typeof addLeSkFlowNode !== "function") return;
     const wrap = $("le_sk_flow_nodes");
@@ -230,7 +272,7 @@
     LE_SK_FLOW.batch = true;
     clearGraph();
     const add = (kind, pref) => addLeSkFlowNode(kind, pref);
-    if (id === "bolt") {
+    if (id === "bolt" || id === "fireball") {
       add("delivery", { id: "cast", params: { mode: "instant" } });
       add("look", { id: "look", params: { source: "procedural", attachment: "caster", effect: "vaerun:toolkit/fire_burst" } });
       add("play_sound", { id: "sound", params: { sound: "minecraft:entity.blaze.shoot" } });
@@ -239,15 +281,17 @@
         projectile_kind: "spell",
         visual: "particles",
         damage_stat: "magic_attack",
-        damage_ratio: 1,
+        damage_ratio: 0,
         projectile_speed: 1.6,
       } });
       add("look", { id: "trail", params: { source: "procedural", attachment: "projectile", effect: "vaerun:toolkit/fireball" } });
+      add("damage", { id: "hit", params: { damage_ratio: 1, damage_stat: "magic_attack" } });
       LE_SK_FLOW.batch = false;
       wire("cast", "next", "look");
       wire("look", "next", "sound");
       wire("sound", "next", "shot");
       wire("shot", "next", "trail");
+      wire("shot", "per_target", "hit");
     } else if (id === "channel") {
       const ch = $("le_sk_channel");
       if (ch) ch.value = "3";
@@ -258,6 +302,7 @@
       wire("cast", "next", "look");
       wire("look", "next", "act");
     } else if (id === "arrow_rain") {
+      add("delivery", { id: "cast", params: { mode: "instant" } });
       add("projectile", { id: "rain", params: {
         spell_mode: "projectile_falling",
         projectile_kind: "arrow",
@@ -280,8 +325,10 @@
       } });
       add("look", { id: "look", params: { source: "procedural", attachment: "ground", effect: "vaerun:toolkit/arrow_rain" } });
       LE_SK_FLOW.batch = false;
+      wire("cast", "next", "rain");
       wire("rain", "next", "look");
     } else if (id === "falling") {
+      add("delivery", { id: "cast", params: { mode: "instant" } });
       add("delivery", { id: "falling", params: {
         mode: "falling_block",
         falling_block_id: "minecraft:magma_block",
@@ -294,26 +341,43 @@
       add("hit", { id: "hit", params: { shape: "radius", radius: 4 } });
       add("damage", { id: "act", params: { damage_ratio: 1, damage_stat: "magic_attack" } });
       LE_SK_FLOW.batch = false;
+      wire("cast", "next", "falling");
       wire("falling", "next", "look");
       wire("look", "next", "hit");
       wire("hit", "on_pass", "act");
-    } else if (id === "trap") {
-      add("delivery", { id: "trap", params: { mode: "trap", radius: 3 } });
+    } else if (id === "trap" || id === "poison_trap") {
+      add("delivery", { id: "cast", params: { mode: "instant" } });
+      add("delivery", { id: "trap", params: {
+        mode: "trap",
+        radius: 3,
+        duration_seconds: 10,
+        max_life_seconds: 10,
+        arm_delay_seconds: 2,
+        arm_delay_ticks: 40,
+        damage_ratio: 0,
+        max_triggers: 1,
+      } });
       add("look", { id: "look", params: { source: "procedural", attachment: "ground", effect: "vaerun:toolkit/ice_circle" } });
-      add("damage", { id: "act" });
-      add("debuff", { id: "debuff" });
+      add("damage", { id: "act", params: { damage_ratio: 1, damage_stat: "magic_attack" } });
+      add("debuff", { id: "poison", params: { effect: "vaerun:assassin/chaos_stinger", chance: 1, stacks: 1 } });
+      add("despawn", { id: "gone", params: { target: "zone" } });
       LE_SK_FLOW.batch = false;
+      wire("cast", "next", "trap");
       wire("trap", "next", "look");
       wire("trap", "on_enter", "act");
-      wire("act", "next", "debuff");
+      wire("act", "next", "poison");
+      wire("poison", "next", "gone");
     } else if (id === "totem") {
+      add("delivery", { id: "cast", params: { mode: "instant" } });
       add("totem_turret", { id: "totem" });
       add("look", { id: "look", params: { source: "procedural", attachment: "ground", effect: "vaerun:toolkit/holy_ring" } });
       add("damage", { id: "act" });
       LE_SK_FLOW.batch = false;
+      wire("cast", "next", "totem");
       wire("totem", "next", "look");
       wire("totem", "on_tick", "act");
     } else if (id === "meteor") {
+      add("delivery", { id: "cast", params: { mode: "instant" } });
       add("delivery", { id: "meteor", params: {
         mode: "falling_block",
         falling_block_id: "minecraft:magma_block",
@@ -326,6 +390,7 @@
       add("hit", { id: "hit", params: { shape: "radius", radius: 5 } });
       add("damage", { id: "land", params: { damage_ratio: 1.2, damage_stat: "magic_attack" } });
       LE_SK_FLOW.batch = false;
+      wire("cast", "next", "meteor");
       wire("meteor", "next", "look");
       wire("look", "next", "hit");
       wire("hit", "on_pass", "land");
@@ -360,20 +425,58 @@
       wire("heal", "next", "mana");
       wire("mana", "next", "buff");
       wire("buff", "next", "look");
-    } else if (id === "dice") {
+    } else if (id === "dice" || id === "lucky_dice") {
       add("delivery", { id: "cast", params: { mode: "instant" } });
-      add("roll", { id: "dice", params: { min: 1, max: 100, store_as: "dice" } });
-      add("weighted_choice", { id: "pick", params: { outcomes: [
-        { weight: 60, node: "hit" },
-        { weight: 30, node: "lucky" },
-        { weight: 10, node: "jackpot" },
-      ] } });
-      add("damage", { id: "hit", params: { damage_ratio: 1, damage_stat: "magic_attack" } });
-      add("buff", { id: "lucky" });
+      add("random_number", { id: "dice", params: { min: 1, max: 6, store_as: "dice", scope: "cast", integer: true } });
+      add("if_else", { id: "high", params: { condition: "compare", left: "var:dice", op: "gte", right: "5" } });
       add("damage", { id: "jackpot", params: { damage_ratio: 3, damage_stat: "magic_attack" } });
+      add("look", { id: "gold", params: { source: "procedural", attachment: "caster", effect: "vaerun:toolkit/holy_ring" } });
+      add("if_else", { id: "mid", params: { condition: "compare", left: "var:dice", op: "gte", right: "3" } });
+      add("buff", { id: "lucky" });
+      add("damage", { id: "hit", params: { damage_ratio: 1, damage_stat: "magic_attack" } });
       LE_SK_FLOW.batch = false;
       wire("cast", "next", "dice");
-      wire("dice", "next", "pick");
+      wire("dice", "next", "high");
+      wire("high", "on_pass", "jackpot");
+      wire("jackpot", "next", "gold");
+      wire("high", "on_fail", "mid");
+      wire("mid", "on_pass", "lucky");
+      wire("mid", "on_fail", "hit");
+    } else if (id === "summoner" || id === "spirit_wolf") {
+      add("delivery", { id: "cast", params: { mode: "instant" } });
+      add("summon", { id: "wolf", params: {
+        entity_type: "minecraft:wolf",
+        count: 1,
+        radius: 1.5,
+        assist_owner: true,
+        despawn_after_seconds: 20,
+        behavior_skill_id: "vaerun:sorcerer/flame_orb",
+      } });
+      add("look", { id: "birth", params: { source: "procedural", attachment: "caster", effect: "vaerun:toolkit/arcane_spiral" } });
+      add("look", { id: "deathfx", params: { source: "procedural", attachment: "hit", effect: "vaerun:toolkit/fire_burst" } });
+      add("play_sound", { id: "howl", params: { sound: "minecraft:entity.wolf.death" } });
+      add("look", { id: "expirefx", params: { source: "procedural", attachment: "caster", effect: "vaerun:toolkit/holy_ring" } });
+      LE_SK_FLOW.batch = false;
+      wire("cast", "next", "wolf");
+      wire("wolf", "next", "birth");
+      wire("wolf", "on_death", "deathfx");
+      wire("deathfx", "next", "howl");
+      wire("wolf", "on_expire", "expirefx");
+    } else if (id === "berserker") {
+      add("delivery", { id: "cast", params: { mode: "instant" } });
+      add("hit", { id: "who", params: { shape: "look" } });
+      add("damage", { id: "hit", params: { damage_ratio: 1, damage_stat: "physical_attack" } });
+      add("modify_variable", { id: "rage", params: { name: "rage", op: "add", amount: 1, scope: "player" } });
+      add("if_else", { id: "enough", params: { condition: "compare", left: "player:rage", op: "gte", right: "3" } });
+      add("damage", { id: "extra", params: { damage_ratio: 0.6, damage_stat: "physical_attack" } });
+      add("set_variable", { id: "reset", params: { name: "rage", value: 0, scope: "player" } });
+      LE_SK_FLOW.batch = false;
+      wire("cast", "next", "who");
+      wire("who", "on_pass", "hit");
+      wire("hit", "next", "rage");
+      wire("rage", "next", "enough");
+      wire("enough", "on_pass", "extra");
+      wire("extra", "next", "reset");
     } else if (id === "lucky_strike") {
       add("delivery", { id: "cast", params: { mode: "instant" } });
       add("if_else", { id: "iff", params: { condition: "chance", chance_percent: 50, chance: 0.5 } });
@@ -394,6 +497,7 @@
     } else {
       LE_SK_FLOW.batch = false;
     }
+    ensureCastStart();
     if (typeof refreshLeSkFlowEdgeSelects === "function") refreshLeSkFlowEdgeSelects();
     if (typeof leSkFlowAutoLayout === "function") leSkFlowAutoLayout();
     else if (typeof leSkFlowRefreshGraph === "function") leSkFlowRefreshGraph();

@@ -792,11 +792,27 @@
       background-size: 22px 22px;
     }
     .le-sk-graphstage.linking { cursor: crosshair; }
-    #le_sk_graph { position: relative; min-width: 100%; min-height: 100%; }
+    .le-sk-graphstage.panning { cursor: grabbing; }
+    #le_sk_graph { position: relative; min-width: 100%; min-height: 100%; transform-origin: 0 0; }
     #le_sk_graph_wires {
       position: absolute; inset: 0; width: 100%; height: 100%;
       pointer-events: none; overflow: visible;
     }
+    #le_sk_graph_wires .le-sk-wire-hit { pointer-events: stroke; cursor: pointer; }
+    #le_sk_graph_wires .le-sk-wire { pointer-events: none; }
+    #le_sk_graph_wires .le-sk-wire-hit:hover + .le-sk-wire { stroke-width: 4.5; stroke-opacity: 1; filter: drop-shadow(0 0 4px currentColor); }
+    .le-sk-gnode { padding-left: 0.85rem; }
+    .le-sk-gin {
+      position: absolute; left: -7px; top: 28px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #0d1626; border: 2px solid #7eb8ff;
+      cursor: copy; z-index: 2;
+    }
+    .le-sk-gnode.entry .le-sk-gin, .le-sk-gnode.cast-start .le-sk-gin { display: none; }
+    .le-sk-graphstage.linking .le-sk-gin { box-shadow: 0 0 0 3px rgba(126, 184, 255, 0.35); }
+    .le-flow-advanced { margin: 0.35rem 0 0.15rem; font-size: 0.78rem; color: #8ea0b8; }
+    .le-flow-advanced > summary { cursor: pointer; font-weight: 650; }
+    .le-flow-advanced .le-flow-id, .le-flow-advanced .le-flow-kind { margin: 0.25rem 0.2rem 0.25rem 0; }
     .le-sk-gnode {
       position: absolute; width: 188px;
       background: linear-gradient(180deg, #152033 0%, #101827 100%);
@@ -808,6 +824,7 @@
     }
     .le-sk-gnode:active { cursor: grabbing; }
     .le-sk-gnode.on { box-shadow: 0 0 0 1px currentColor, 0 10px 24px rgba(0,0,0,0.35); }
+    .le-sk-gnode.trace { box-shadow: 0 0 0 2px #f2e2b0, 0 0 18px rgba(232, 195, 106, 0.45); }
     .le-sk-gnode.drop { box-shadow: 0 0 0 2px #7eb8ff; }
     .le-sk-graphstage.linking .le-sk-gnode, .le-sk-graphstage.linking .le-sk-gport { cursor: copy; }
     .le-sk-gnode.cat-cast { color: var(--sk-cast); border-color: rgba(78, 200, 240, 0.55); }
@@ -1130,6 +1147,10 @@
         <button type="button" id="le_sk_btn_check" title="Validate graph">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg>
           Check
+        </button>
+        <button type="button" id="le_sk_btn_trace" title="Preview which nodes run now vs later">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          Trace
         </button>
         <button type="button" id="le_sk_btn_new">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
@@ -1619,7 +1640,7 @@
     <div id="le_skill_stages_workspace" class="hidden">
       <div class="card le-sk-board-card">
         <h2>Skill — flow</h2>
-        <p class="hint" id="le_sk_intro">Skills are node graphs. Wire <strong>Cast → Particle → Projectile</strong>. Sound and Skill Effect are optional nodes. A Particle after Projectile rides the shot; Skill Effect / Sound after Projectile apply on hit.</p>
+        <p class="hint" id="le_sk_intro">Skills are node graphs. Start at <strong>When Skill Cast</strong> (after mana and cooldown commit). Wire Next for spawn-time work; put combat on When Attack Hits or Enters Zone. Studio Check / Trace verify the graph here. In-game play needs a Minecraft session.</p>
 
         <div class="le-sk-studio">
         <aside class="le-sk-kitcol">
@@ -1630,81 +1651,91 @@
           </div>
           <div class="le-sk-kitbody" id="le_sk_side_nodes">
             <div class="le-sk-kit-h">Nodes <button type="button" class="le-sk-help-btn" id="le_sk_kit_help" title="How to make a fireball">?</button></div>
-            <p class="le-sk-kit-tip">Core: When Skill Cast → Particle → Projectile. Sound and Apply Debuff are optional. Particle after Projectile rides the shot; Apply Debuff / Sound after Projectile apply on hit.</p>
-            <button type="button" class="le-sk-kit-item le-sk-kit-start" title="Cast, particle, sound, then a flying fire bolt." data-sk-recipe="bolt"><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 3l7 9h-6l2 9-9-11h6z"/></svg></span>Fire Bolt</button>
-            <button type="button" class="le-sk-kit-item" title="Start of the skill. Wire Next to Particle / Sound / Projectile. Does not deal damage." data-cat="delivery" data-sk-add='{"kind":"delivery","id":"cast","params":{"mode":"instant"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 3l7 9h-6l2 9-9-11h6z"/></svg></span>When Skill Cast</button>
-            <button type="button" class="le-sk-kit-item" title="Play a toolkit VFX. After Cast = at you. After Projectile = rides the shot." data-cat="look" data-sk-add='{"kind":"look","id":"look","params":{"source":"procedural","attachment":"caster","effect":"vaerun:toolkit/fire_burst"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 4v2M12 18v2M5.6 6.5l1.5 1.5M16.9 16.9l1.5 1.5M4 12h2M18 12h2M5.6 17.5l1.5-1.5M16.9 7.1l1.5-1.5"/></svg></span>Particle</button>
-            <button type="button" class="le-sk-kit-item" title="Optional. After Cast = chant / whoosh. After Projectile = hit sound on the mob." data-cat="look" data-sk-add='{"kind":"play_sound","id":"sound","params":{"sound":"minecraft:entity.blaze.shoot"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10v4h4l5 4V6L8 10H4z"/><path d="M16 9.5a4 4 0 0 1 0 5"/></svg></span>Sound</button>
-            <button type="button" class="le-sk-kit-item" title="Something flies and can damage. Wire a Particle after it to ride the shot." data-cat="delivery" data-sk-add='{"kind":"projectile","id":"shot","params":{"spell_mode":"projectile","projectile_kind":"spell","visual":"particles","damage_stat":"magic_attack","damage_ratio":1,"projectile_speed":1.6}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h12M14 7l5 5-5 5"/><path d="M5 8v8"/></svg></span>Projectile</button>
-            <button type="button" class="le-sk-kit-item" title="Apply a skill_effects id to the mob. After Projectile this wires On Hit." data-cat="act" data-sk-add='{"kind":"debuff","id":"fx","params":{"effect":"","chance":1,"stacks":1}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2.2 6.4H21l-5.4 4 2.1 6.6L12 16.6 6.3 20l2.1-6.6L3 9.4h6.8z"/></svg></span>Apply Debuff</button>
+            <p class="le-sk-kit-tip">Start at When Skill Cast. Wire Next for spawn-time work. Combat after a projectile or trap belongs on When Attack Hits / When Entity Enters Zone.</p>
+            <button type="button" class="le-sk-kit-item le-sk-kit-start" title="Cast, particle, sound, then a flying fire bolt." data-sk-recipe="bolt"><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 3l7 9h-6l2 9-9-11h6z"/></svg></span>Fireball</button>
             <details class="le-sk-kit-sec" open>
-              <summary>More casts</summary>
-              <button type="button" class="le-sk-kit-item" title="Circle on the ground. Wire On Tick for repeating damage, or On Enter for traps." data-cat="delivery" data-sk-add='{"kind":"delivery","id":"ground","params":{"mode":"ground","radius":4}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="7"/></svg></span>Create Ground Zone</button>
-              <button type="button" class="le-sk-kit-item" title="Arrows drop from the sky. Kind arrow, entity arrow, block minecraft:air." data-cat="delivery" data-sk-add='{"kind":"projectile","id":"rain","params":{"spell_mode":"projectile_falling","projectile_kind":"arrow","entity_name":"arrow","falling_block_id":"minecraft:air","projectile_item":"minecraft:arrow","item":"minecraft:arrow","block_fall_speed":-0.18,"find_surface":true,"life_ticks":80,"random_x_offset":2,"random_z_offset":2,"projectile_count":20,"projectile_delay_ticks":4,"projectile_drop_height":12,"ground_anchor":"look","spawn_distance":8,"damage_stat":"physical_attack","damage_ratio":2}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M12 2v12M16 3v10M8 16l0 5M12 17l0 5M16 16l0 5"/></svg></span>Arrow Rain</button>
-              <button type="button" class="le-sk-kit-item" title="A falling cube meteor. Set block id. Does not place the block in the world." data-cat="delivery" data-sk-add='{"kind":"delivery","id":"falling","params":{"mode":"falling_block","projectile_kind":"spell","falling_block_id":"minecraft:magma_block","projectile_drop_height":18,"projectile_drop_speed":0.8,"ground_anchor":"look","spawn_distance":8}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="3" width="8" height="8" rx="1"/><path d="M12 12v8m-3-3l3 3 3-3"/></svg></span>Falling Cube</button>
+              <summary>Start and Spawn</summary>
+              <button type="button" class="le-sk-kit-item" title="Fires after mana, stamina, and cooldown are committed. One per skill. Costs live in Skill Settings." data-cat="delivery" data-sk-add='{"kind":"delivery","id":"cast","params":{"mode":"instant"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 3l7 9h-6l2 9-9-11h6z"/></svg></span>When Skill Cast</button>
+              <button type="button" class="le-sk-kit-item" title="A flying projectile. Wire When Attack Hits for damage. Wire Particle after it to ride the shot." data-cat="delivery" data-sk-add='{"kind":"projectile","id":"shot","params":{"spell_mode":"projectile","projectile_kind":"spell","visual":"particles","damage_stat":"magic_attack","damage_ratio":1,"projectile_speed":1.6}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h12M14 7l5 5-5 5"/><path d="M5 8v8"/></svg></span>Launch Projectile</button>
+              <button type="button" class="le-sk-kit-item" title="Circle on the ground. Wire Every Tick for repeating work, or When Entity Enters Zone for traps." data-cat="delivery" data-sk-add='{"kind":"delivery","id":"ground","params":{"mode":"ground","radius":4}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="7"/></svg></span>Create Ground Zone</button>
+              <button type="button" class="le-sk-kit-item" title="Arrows drop from the sky." data-cat="delivery" data-sk-add='{"kind":"projectile","id":"rain","params":{"spell_mode":"projectile_falling","projectile_kind":"arrow","entity_name":"arrow","falling_block_id":"minecraft:air","projectile_item":"minecraft:arrow","item":"minecraft:arrow","block_fall_speed":-0.18,"find_surface":true,"life_ticks":80,"random_x_offset":2,"random_z_offset":2,"projectile_count":20,"projectile_delay_ticks":4,"projectile_drop_height":12,"ground_anchor":"look","spawn_distance":8,"damage_stat":"physical_attack","damage_ratio":2}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M12 2v12M16 3v10M8 16l0 5M12 17l0 5M16 16l0 5"/></svg></span>Rain Arrows</button>
+              <button type="button" class="le-sk-kit-item" title="A falling cube. Does not place the block in the world." data-cat="delivery" data-sk-add='{"kind":"delivery","id":"falling","params":{"mode":"falling_block","projectile_kind":"spell","falling_block_id":"minecraft:magma_block","projectile_drop_height":18,"projectile_drop_speed":0.8,"ground_anchor":"look","spawn_distance":8}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="3" width="8" height="8" rx="1"/><path d="M12 12v8m-3-3l3 3 3-3"/></svg></span>Drop Falling Block</button>
               <button type="button" class="le-sk-kit-item" title="Spawn a mob that fights for you. Set behavior_skill_id so it casts a Vaerun skill." data-cat="delivery" data-sk-add='{"kind":"summon","id":"summon"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M6 20c1-4 11-4 12 0"/></svg></span>Summon Entity</button>
+              <button type="button" class="le-sk-kit-item" title="Place a totem or turret that can fire a skill." data-cat="delivery" data-sk-add='{"kind":"totem_turret","id":"totem"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="18" rx="1"/><path d="M6 21h12"/></svg></span>Create Totem / Turret</button>
+            </details>
+            <details class="le-sk-kit-sec" open>
+              <summary>Visuals and Sounds</summary>
+              <button type="button" class="le-sk-kit-item" title="Play a toolkit VFX. After Cast = at you. After Projectile = rides the shot." data-cat="look" data-sk-add='{"kind":"look","id":"look","params":{"source":"procedural","attachment":"caster","effect":"vaerun:toolkit/fire_burst"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 4v2M12 18v2M5.6 6.5l1.5 1.5M16.9 16.9l1.5 1.5M4 12h2M18 12h2M5.6 17.5l1.5-1.5M16.9 7.1l1.5-1.5"/></svg></span>Play Particle Effect</button>
+              <button type="button" class="le-sk-kit-item" title="Play a sound. After Cast = chant / whoosh. After Projectile = hit sound on the mob." data-cat="look" data-sk-add='{"kind":"play_sound","id":"sound","params":{"sound":"minecraft:entity.blaze.shoot"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10v4h4l5 4V6L8 10H4z"/><path d="M16 9.5a4 4 0 0 1 0 5"/></svg></span>Play Sound</button>
+              <button type="button" class="le-sk-kit-item" data-cat="look" data-sk-add='{"kind":"cast_animation","id":"anim","params":{"cast_animation":"swing_main"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 8l4-4 4 4M8 16l4 4 4-4M12 4v16"/></svg></span>Play Cast Animation</button>
             </details>
             <details class="le-sk-kit-sec">
-              <summary>Look</summary>
-              <p class="le-sk-kit-tip">Particle and Sound are at the top of the kit. These are extras.</p>
-              <button type="button" class="le-sk-kit-item" data-cat="look" data-sk-add='{"kind":"cast_animation","id":"anim","params":{"cast_animation":"swing_main"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 8l4-4 4 4M8 16l4 4 4-4M12 4v16"/></svg></span>Cast Animation</button>
-            </details>
-            <details class="le-sk-kit-sec">
-              <summary>Hit</summary>
-              <p class="le-sk-kit-tip">Who is affected. Melee: Cast → Hit → Damage. Projectiles already hit what they fly into. On-hit Skill Effect is a node at the top of the kit.</p>
-              <button type="button" class="le-sk-kit-item" data-cat="hit" data-sk-add='{"kind":"hit","id":"hit","params":{"shape":"look"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/></svg></span>Look At Mob</button>
-              <button type="button" class="le-sk-kit-item" data-cat="hit" data-sk-add='{"kind":"hit","id":"hit","params":{"shape":"cone"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20L12 4l8 16z"/></svg></span>Cone</button>
-              <button type="button" class="le-sk-kit-item" data-cat="hit" data-sk-add='{"kind":"hit","id":"hit","params":{"shape":"line"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19L19 5"/><path d="M15 5h4v4"/></svg></span>Line</button>
-              <button type="button" class="le-sk-kit-item" data-cat="hit" data-sk-add='{"kind":"hit","id":"hit","params":{"shape":"radius","radius":4}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></span>Radius</button>
-              <button type="button" class="le-sk-kit-item" data-cat="hit" data-sk-add='{"kind":"hit","id":"hit","params":{"shape":"self"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M6 20c1-4 11-4 12 0"/></svg></span>Self</button>
-              <button type="button" class="le-sk-kit-item" data-cat="hit" data-sk-add='{"kind":"hit","id":"party","params":{"shape":"party","radius":25,"target_type":"party"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="2.5"/><circle cx="16" cy="8" r="2.5"/><path d="M4 19c1-3 5-4 8-4s7 1 8 4"/></svg></span>Party</button>
-              <button type="button" class="le-sk-kit-item" title="Pick the closest valid enemy or ally and set it as the current target." data-cat="hit" data-sk-add='{"kind":"nearest_target","id":"near","params":{"radius":12,"target_type":"hostile"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg></span>Nearest Target</button>
+              <summary>Find Targets</summary>
+              <p class="le-sk-kit-tip">Who is affected. Melee: Cast → Find Targets → Deal Damage. Projectiles already hit what they fly into.</p>
+              <button type="button" class="le-sk-kit-item" data-cat="hit" data-sk-add='{"kind":"hit","id":"hit","params":{"shape":"radius","radius":4}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></span>Find in Radius</button>
+              <button type="button" class="le-sk-kit-item" data-cat="hit" data-sk-add='{"kind":"hit","id":"hit","params":{"shape":"cone"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20L12 4l8 16z"/></svg></span>Find in Cone</button>
+              <button type="button" class="le-sk-kit-item" data-cat="hit" data-sk-add='{"kind":"hit","id":"hit","params":{"shape":"line"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19L19 5"/><path d="M15 5h4v4"/></svg></span>Find in Line</button>
+              <button type="button" class="le-sk-kit-item" title="Pick the closest valid enemy or ally and set it as the current target." data-cat="hit" data-sk-add='{"kind":"nearest_target","id":"near","params":{"radius":12,"target_type":"hostile"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg></span>Find Nearest</button>
+              <button type="button" class="le-sk-kit-item" data-cat="hit" data-sk-add='{"kind":"hit","id":"hit","params":{"shape":"self"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M6 20c1-4 11-4 12 0"/></svg></span>Target Self</button>
+              <button type="button" class="le-sk-kit-item" data-cat="hit" data-sk-add='{"kind":"hit","id":"party","params":{"shape":"party","radius":25,"target_type":"party"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="2.5"/><circle cx="16" cy="8" r="2.5"/><path d="M4 19c1-3 5-4 8-4s7 1 8 4"/></svg></span>Target Party</button>
               <button type="button" class="le-sk-kit-item" title="Keep only targets matching hostility, health, effect, or entity id." data-cat="hit" data-sk-add='{"kind":"filter_targets","id":"filter","params":{"hostility":"hostile"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M7 12h10M10 18h4"/></svg></span>Filter Targets</button>
+              <button type="button" class="le-sk-kit-item" title="Turn the caster to face the current target." data-cat="hit" data-sk-add='{"kind":"face_target","id":"face"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 4v2M4 12h2M18 12h2"/></svg></span>Face Target</button>
             </details>
             <details class="le-sk-kit-sec">
-              <summary>Action</summary>
-              <p class="le-sk-kit-tip">On-hit Skill Effect is at the top of the kit. Buff here applies to you.</p>
-              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"damage","id":"act","params":{"damage_ratio":1,"damage_stat":"magic_attack"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2 6 6 .5-4.5 4 1.5 6L12 16l-5 3.5 1.5-6L4 9.5 10 9z"/></svg></span>Damage</button>
+              <summary>Actions</summary>
+              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"damage","id":"act","params":{"damage_ratio":1,"damage_stat":"magic_attack"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2 6 6 .5-4.5 4 1.5 6L12 16l-5 3.5 1.5-6L4 9.5 10 9z"/></svg></span>Deal Damage</button>
+              <button type="button" class="le-sk-kit-item" title="Heal the current target list (or you if none)." data-cat="act" data-sk-add='{"kind":"heal","id":"heal"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></span>Heal Target</button>
               <button type="button" class="le-sk-kit-item" title="Apply a skill_effects id to you (on cast)." data-cat="act" data-sk-add='{"kind":"buff","id":"buff"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v16M8 8l4-4 4 4"/></svg></span>Apply Buff</button>
-              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"movement","id":"move","params":{"movement_type":"slide","direction":"forward","strength":1,"delay_resolve_ticks":4,"horizontal_only":true}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 16c4-8 12-8 16 0"/><path d="M16 10l4 6-6 0"/></svg></span>Movement</button>
-              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"knockback","id":"knock","params":{"mode":"knock","hit_knockback":1}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h12M12 7l5 5-5 5"/><path d="M20 6v12"/></svg></span>Knock / Pull</button>
-              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"heal","id":"heal"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></span>Heal</button>
+              <button type="button" class="le-sk-kit-item" title="Apply a skill_effects id to the current target. After Projectile this wires When Attack Hits." data-cat="act" data-sk-add='{"kind":"debuff","id":"fx","params":{"effect":"","chance":1,"stacks":1}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2.2 6.4H21l-5.4 4 2.1 6.6L12 16.6 6.3 20l2.1-6.6L3 9.4h6.8z"/></svg></span>Apply Debuff</button>
               <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"restore_mana","id":"mana"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c4 6 6 9 6 12a6 6 0 1 1-12 0c0-3 2-6 6-12z"/></svg></span>Restore Mana</button>
-              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"aggro","id":"aggro"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 5v2M12 17v2M5 12h2M17 12h2"/></svg></span>Set Aggro / Taunt</button>
-              <button type="button" class="le-sk-kit-item" title="Pause, then continue. A Sequence stage does not wait unless you insert this." data-cat="act" data-sk-add='{"kind":"delay","id":"wait","params":{"delay_ticks":40}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/></svg></span>Wait X Ticks</button>
-              <button type="button" class="le-sk-kit-item" title="Run ordered stages. Insert Wait if you need a pause between stages." data-cat="act" data-sk-add='{"kind":"sequence","id":"seq","params":{"steps":[]}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6h14M5 12h14M5 18h10"/></svg></span>Sequence</button>
-              <button type="button" class="le-sk-kit-item" title="Run a body node a fixed number of times, then continue." data-cat="act" data-sk-add='{"kind":"repeat_times","id":"loop","params":{"times":3}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12a8 8 0 1 0 2-5.3M4 4v5h5"/></svg></span>Repeat X Times</button>
-              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"pulse","id":"pulse","params":{"duration_seconds":4,"tick_interval_seconds":1}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h3l2-6 4 12 2-6h5"/></svg></span>Repeat Every X Ticks</button>
-              <button type="button" class="le-sk-kit-item" title="End this chain. Later Next wires are ignored." data-cat="act" data-sk-add='{"kind":"stop","id":"stop"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="12" height="12" rx="1"/></svg></span>Stop Execution</button>
-              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"cleanse","id":"cleanse","params":{"preset":"slow_freeze"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>Cleanse</button>
-              <button type="button" class="le-sk-kit-item" title="Generate or consume mana, stamina, or health." data-cat="act" data-sk-add='{"kind":"modify_resource","id":"rage","params":{"resource":"mana","op":"add","amount":10}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c4 6 6 9 6 12a6 6 0 1 1-12 0c0-3 2-6 6-12z"/></svg></span>Modify Resource</button>
-              <button type="button" class="le-sk-kit-item" title="Run another skill_actions id as a sub-action." data-cat="act" data-sk-add='{"kind":"trigger_skill_action","id":"sub","params":{"skill_id":""}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 5h10v10M8 15l10 4-10 4z"/></svg></span>Trigger Skill</button>
-              <button type="button" class="le-sk-kit-item" title="Remove your summons (or the current summoned target)." data-cat="act" data-sk-add='{"kind":"despawn","id":"despawn","params":{"target":"summons"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg></span>Despawn</button>
+              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"movement","id":"move","params":{"movement_type":"slide","direction":"forward","strength":1,"delay_resolve_ticks":4,"horizontal_only":true}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 16c4-8 12-8 16 0"/><path d="M16 10l4 6-6 0"/></svg></span>Move Caster</button>
+              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"knockback","id":"knock","params":{"mode":"knock","hit_knockback":1}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h12M12 7l5 5-5 5"/><path d="M20 6v12"/></svg></span>Push / Pull</button>
+              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"aggro","id":"aggro"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 5v2M12 17v2M5 12h2M17 12h2"/></svg></span>Taunt</button>
+              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"cleanse","id":"cleanse","params":{"preset":"slow_freeze"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>Remove Negative Effects</button>
+              <button type="button" class="le-sk-kit-item" title="Generate or consume mana, stamina, or health." data-cat="act" data-sk-add='{"kind":"modify_resource","id":"rage","params":{"resource":"mana","op":"add","amount":10}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c4 6 6 9 6 12a6 6 0 1 1-12 0c0-3 2-6 6-12z"/></svg></span>Change Resource</button>
+              <button type="button" class="le-sk-kit-item" title="Run another skill_actions id as a sub-action." data-cat="act" data-sk-add='{"kind":"trigger_skill_action","id":"sub","params":{"skill_id":""}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 5h10v10M8 15l10 4-10 4z"/></svg></span>Activate Another Skill</button>
+              <button type="button" class="le-sk-kit-item" title="Remove your summons (or the current summoned target)." data-cat="act" data-sk-add='{"kind":"despawn","id":"despawn","params":{"target":"summons"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg></span>Remove Spawned Entity</button>
             </details>
             <details class="le-sk-kit-sec">
-              <summary>More</summary>
-              <button type="button" class="le-sk-kit-item" title="One condition, True and False outputs. Pick a condition in the inspector instead of chaining extra gate nodes." data-cat="gate" data-sk-add='{"kind":"if_else","id":"iff","params":{"condition":"chance","chance_percent":50}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v8M8 16l4-4 4 4"/></svg></span>If / Else</button>
-              <button type="button" class="le-sk-kit-item" data-cat="gate" data-sk-add='{"kind":"chance","id":"chance","params":{"chance":0.5}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v.01M11 12h1v4"/></svg></span>Random Chance</button>
-              <button type="button" class="le-sk-kit-item" data-cat="gate" data-sk-add='{"kind":"require_effect","id":"need","params":{"effect":"vaerun:sorcerer/ice_magic","consume":false}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="6" y="11" width="12" height="9" rx="1"/></svg></span>If Entity Has Effect</button>
+              <summary>Logic</summary>
+              <button type="button" class="le-sk-kit-item" title="One condition, True and False outputs. Pick a condition in the inspector." data-cat="gate" data-sk-add='{"kind":"if_else","id":"iff","params":{"condition":"chance","chance_percent":50}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v8M8 16l4-4 4 4"/></svg></span>If / Else</button>
+              <button type="button" class="le-sk-kit-item" data-cat="gate" data-sk-add='{"kind":"chance","id":"chance","params":{"chance":0.5}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v.01M11 12h1v4"/></svg></span>If Random Chance</button>
+              <button type="button" class="le-sk-kit-item" data-cat="gate" data-sk-add='{"kind":"require_effect","id":"need","params":{"effect":"vaerun:sorcerer/ice_magic","consume":false}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="6" y="11" width="12" height="9" rx="1"/></svg></span>If Target Has Effect</button>
               <button type="button" class="le-sk-kit-item" data-cat="gate" data-sk-add='{"kind":"require_targets","id":"gate"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 5v2M12 17v2M5 12h2M17 12h2"/></svg></span>If Targets Found</button>
               <button type="button" class="le-sk-kit-item" data-cat="gate" data-sk-add='{"kind":"successful_hit","id":"didhit"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12l5 5L20 7"/></svg></span>If Attack Hits</button>
-              <button type="button" class="le-sk-kit-item" title="Roll an integer in a range and store it. Optional outcome map jumps to a node." data-cat="gate" data-sk-add='{"kind":"roll","id":"dice","params":{"min":1,"max":100,"store_as":"dice"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="5" width="14" height="14" rx="2"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/></svg></span>Random Roll</button>
-              <button type="button" class="le-sk-kit-item" title="Roll a number and store it, then continue. Use If / Else to branch on the result." data-cat="gate" data-sk-add='{"kind":"random_number","id":"rng","params":{"min":1,"max":100,"store_as":"roll","integer":true}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h.01M15 15h.01M15 9h.01M9 15h.01"/></svg></span>Random Number</button>
-              <button type="button" class="le-sk-kit-item" title="Pick one wired outcome using weights (60 / 30 / 10)." data-cat="gate" data-sk-add='{"kind":"weighted_choice","id":"pick","params":{"outcomes":[{"weight":60,"node":""},{"weight":30,"node":""},{"weight":10,"node":""}]}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16M7 19V9m5 10V5m5 14v-6"/></svg></span>Weighted Choice</button>
+              <button type="button" class="le-sk-kit-item" data-cat="gate" data-sk-add='{"kind":"require_los","id":"see"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/></svg></span>If Target Is Visible</button>
               <button type="button" class="le-sk-kit-item" title="Compare a number, stat, resource, or stored variable." data-cat="gate" data-sk-add='{"kind":"compare","id":"cmp","params":{"left":"var:dice","op":"gte","right":90}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 8h10M7 12h6M7 16h10"/></svg></span>Compare Values</button>
-              <button type="button" class="le-sk-kit-item" title="Store a number for later nodes. Scope: cast (this skill), player (rage), skill (this skill id)." data-cat="gate" data-sk-add='{"kind":"set_variable","id":"set","params":{"name":"combo","value":0,"scope":"cast"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M8 12h8"/></svg></span>Set Variable</button>
-              <button type="button" class="le-sk-kit-item" title="Copy a stored value (optionally into another name / scope)." data-cat="gate" data-sk-add='{"kind":"get_variable","id":"get","params":{"name":"combo","scope":"player","store_as":"combo"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 12h6"/></svg></span>Get Variable</button>
-              <button type="button" class="le-sk-kit-item" title="Add, subtract, multiply, or reset a stored value." data-cat="gate" data-sk-add='{"kind":"modify_variable","id":"mod","params":{"name":"combo","op":"add","amount":1,"scope":"player"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></span>Add / Subtract</button>
-              <button type="button" class="le-sk-kit-item" title="Clamp a number or variable between min and max." data-cat="gate" data-sk-add='{"kind":"clamp","id":"clamp","params":{"value":"var:dice","min":1,"max":100,"store_as":"dice"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h16M4 16h16M8 4v4M16 16v4"/></svg></span>Clamp</button>
-              <button type="button" class="le-sk-kit-item" title="Gate on mana, stamina, or health. Optional consume." data-cat="gate" data-sk-add='{"kind":"require_resource","id":"needres","params":{"resource":"mana","amount":20,"consume":false}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c4 6 6 9 6 12a6 6 0 1 1-12 0c0-3 2-6 6-12z"/></svg></span>Require Resource</button>
-              <button type="button" class="le-sk-wire-item" data-sk-port="per_target"><span class="le-sk-dot" style="background:#ffb86b"></span>On Hit</button>
-              <button type="button" class="le-sk-wire-item" data-sk-port="on_expire"><span class="le-sk-dot" style="background:#38bdf8"></span>On Expire</button>
-              <button type="button" class="le-sk-wire-item" data-sk-port="on_tick"><span class="le-sk-dot" style="background:#67e8f9"></span>On Tick</button>
-              <button type="button" class="le-sk-wire-item" data-sk-port="on_enter"><span class="le-sk-dot" style="background:#86efac"></span>On Enter Zone</button>
-              <button type="button" class="le-sk-wire-item" data-sk-port="on_exit"><span class="le-sk-dot" style="background:#fcd34d"></span>On Exit Zone</button>
+              <button type="button" class="le-sk-kit-item" title="Pick one wired outcome using weights (60 / 30 / 10)." data-cat="gate" data-sk-add='{"kind":"weighted_choice","id":"pick","params":{"outcomes":[{"weight":60,"node":""},{"weight":30,"node":""},{"weight":10,"node":""}]}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16M7 19V9m5 10V5m5 14v-6"/></svg></span>Choose Random Outcome</button>
+              <button type="button" class="le-sk-kit-item" title="Gate on mana, stamina, or health. Optional consume." data-cat="gate" data-sk-add='{"kind":"require_resource","id":"needres","params":{"resource":"mana","amount":20,"consume":false}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c4 6 6 9 6 12a6 6 0 1 1-12 0c0-3 2-6 6-12z"/></svg></span>If Enough Resource</button>
+            </details>
+            <details class="le-sk-kit-sec">
+              <summary>Timing</summary>
+              <button type="button" class="le-sk-kit-item" title="Pause, then continue. A Sequence stage does not wait unless you insert this." data-cat="act" data-sk-add='{"kind":"delay","id":"wait","params":{"delay_ticks":40}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/></svg></span>Wait</button>
+              <button type="button" class="le-sk-kit-item" title="Run ordered stages. Insert Wait if you need a pause between stages." data-cat="act" data-sk-add='{"kind":"sequence","id":"seq","params":{"steps":[]}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6h14M5 12h14M5 18h10"/></svg></span>Run Steps in Order</button>
+              <button type="button" class="le-sk-kit-item" title="Run a body node a fixed number of times, then continue." data-cat="act" data-sk-add='{"kind":"repeat_times","id":"loop","params":{"times":3}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12a8 8 0 1 0 2-5.3M4 4v5h5"/></svg></span>Repeat X Times</button>
+              <button type="button" class="le-sk-kit-item" data-cat="act" data-sk-add='{"kind":"pulse","id":"pulse","params":{"duration_seconds":4,"tick_interval_seconds":1}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h3l2-6 4 12 2-6h5"/></svg></span>Repeat Every X Ticks</button>
+              <button type="button" class="le-sk-kit-item" title="End this chain. Later Next wires are ignored." data-cat="act" data-sk-add='{"kind":"stop","id":"stop"}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="12" height="12" rx="1"/></svg></span>Stop Here</button>
+            </details>
+            <details class="le-sk-kit-sec">
+              <summary>Variables</summary>
+              <button type="button" class="le-sk-kit-item" title="Store a number for later nodes. Scope: cast (this skill), player (rage), skill (this skill id)." data-cat="gate" data-sk-add='{"kind":"set_variable","id":"set","params":{"name":"combo","value":0,"scope":"cast"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M8 12h8"/></svg></span>Save Value</button>
+              <button type="button" class="le-sk-kit-item" title="Copy a stored value (optionally into another name / scope)." data-cat="gate" data-sk-add='{"kind":"get_variable","id":"get","params":{"name":"combo","scope":"player","store_as":"combo"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 12h6"/></svg></span>Read Value</button>
+              <button type="button" class="le-sk-kit-item" title="Add or subtract a stored value." data-cat="gate" data-sk-add='{"kind":"modify_variable","id":"mod","params":{"name":"combo","op":"add","amount":1,"scope":"player"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></span>Change Value</button>
+              <button type="button" class="le-sk-kit-item" title="Roll a number and store it, then continue. Use If / Else to branch on the result." data-cat="gate" data-sk-add='{"kind":"random_number","id":"rng","params":{"min":1,"max":100,"store_as":"roll","integer":true}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h.01M15 15h.01M15 9h.01M9 15h.01"/></svg></span>Roll Random Number</button>
+              <button type="button" class="le-sk-kit-item" title="Multiply a stored value." data-cat="gate" data-sk-add='{"kind":"modify_variable","id":"mul","params":{"name":"combo","op":"mul","amount":2,"scope":"cast"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7l10 10M17 7L7 17"/></svg></span>Multiply</button>
+              <button type="button" class="le-sk-kit-item" title="Divide a stored value." data-cat="gate" data-sk-add='{"kind":"modify_variable","id":"div","params":{"name":"combo","op":"div","amount":2,"scope":"cast"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h12M12 6v12"/></svg></span>Divide</button>
+              <button type="button" class="le-sk-kit-item" title="Clamp a number or variable between min and max." data-cat="gate" data-sk-add='{"kind":"clamp","id":"clamp","params":{"value":"var:dice","min":1,"max":100,"store_as":"dice"}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h16M4 16h16M8 4v4M16 16v4"/></svg></span>Limit Number to Range</button>
+            </details>
+            <details class="le-sk-kit-sec">
+              <summary>Events</summary>
+              <p class="le-sk-kit-tip">These are ports on spawn nodes, not extra cards. Select a projectile, zone, or summon, then click a port to wire it.</p>
+              <button type="button" class="le-sk-wire-item" data-sk-port="per_target"><span class="le-sk-dot" style="background:#ffb86b"></span>When Attack Hits</button>
+              <button type="button" class="le-sk-wire-item" data-sk-port="on_expire"><span class="le-sk-dot" style="background:#38bdf8"></span>Duration Ends</button>
+              <button type="button" class="le-sk-wire-item" data-sk-port="on_tick"><span class="le-sk-dot" style="background:#67e8f9"></span>Every Tick</button>
+              <button type="button" class="le-sk-wire-item" data-sk-port="on_enter"><span class="le-sk-dot" style="background:#86efac"></span>Enters Zone</button>
+              <button type="button" class="le-sk-wire-item" data-sk-port="on_exit"><span class="le-sk-dot" style="background:#fcd34d"></span>Leaves Zone</button>
+              <button type="button" class="le-sk-wire-item" data-sk-port="on_death"><span class="le-sk-dot" style="background:#fb7185"></span>Summon Dies</button>
               <button type="button" class="le-sk-wire-item" data-sk-port="on_fail"><span class="le-sk-dot" style="background:#f1948a"></span>False</button>
-              <p class="le-sk-kit-tip">Travel stub only moves. Prefer Projectile unless you need this split.</p>
-              <button type="button" class="le-sk-kit-item" title="A projectile that only moves. Wire Hit + Action for damage." data-cat="delivery" data-sk-add='{"kind":"delivery","id":"travel","params":{"mode":"projectile","projectile_kind":"spell","projectile_speed":1.5,"range":30,"gravity":0}}'><span class="le-sk-kit-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h14M13 7l5 5-5 5"/></svg></span>Travel stub</button>
             </details>
           </div>
           <div class="le-sk-kitbody hidden" id="le_sk_side_particles">
@@ -1730,7 +1761,7 @@
               </div>
               <button type="button" class="ghost mini" id="le_sk_flow_layout">Auto-layout</button>
               <button type="button" class="ghost mini" id="le_sk_flow_make_entry">Make start</button>
-              <span class="hint" id="le_sk_link_hint">Click a port, then another node to wire.</span>
+              <span class="hint" id="le_sk_link_hint">Drag a port to another node’s input. Click a wire to delete. Wheel zoom · middle-drag pan.</span>
             </div>
             <div class="le-sk-graphstage" id="le_sk_graph_stage">
               <div id="le_sk_graph">
@@ -7249,48 +7280,50 @@ function readLeSkParamsFromFields(li, type) {
 function leSkFlowKindOptionsHtml(cur) {
   const kinds = [
     ["delivery", "When Skill Cast / Create Ground Zone / …"],
-    ["hit", "Hit (look / cone / line / radius / self / party)"],
+    ["projectile", "Launch Projectile"],
+    ["hit", "Find Targets"],
+    ["face_target", "Face Target"],
     ["damage", "Deal Damage"],
-    ["delay", "Wait X Ticks"],
+    ["delay", "Wait"],
     ["pulse", "Repeat Every X Ticks"],
-    ["sequence", "Sequence"],
+    ["sequence", "Run Steps in Order"],
     ["repeat_times", "Repeat X Times"],
-    ["stop", "Stop Execution"],
+    ["stop", "Stop Here"],
     ["if_else", "If / Else"],
-    ["cleanse", "Cleanse"],
-    ["require_effect", "If Entity Has Effect"],
-    ["movement", "Movement"],
+    ["cleanse", "Remove Negative Effects"],
+    ["require_effect", "If Target Has Effect"],
+    ["movement", "Move Caster"],
     ["buff", "Apply Buff"],
     ["debuff", "Apply Debuff"],
-    ["heal", "Heal"],
+    ["heal", "Heal Target"],
     ["restore_mana", "Restore Mana"],
-    ["knockback", "Knock / Pull"],
-    ["aggro", "Set Aggro / Taunt"],
-    ["look", "Particle"],
-    ["cast_animation", "Cast Animation"],
+    ["knockback", "Push / Pull"],
+    ["aggro", "Taunt"],
+    ["look", "Play Particle Effect"],
+    ["cast_animation", "Play Cast Animation"],
     ["summon", "Summon Entity"],
-    ["totem_turret", "Totem / Turret"],
+    ["totem_turret", "Create Totem / Turret"],
     ["require_targets", "If Targets Found"],
     ["successful_hit", "If Attack Hits"],
-    ["chance", "Random Chance"],
-    ["require_los", "If Has Line of Sight"],
-    ["roll", "Random Roll"],
-    ["random_number", "Random Number"],
-    ["weighted_choice", "Weighted Choice"],
+    ["chance", "If Random Chance"],
+    ["require_los", "If Target Is Visible"],
+    ["roll", "Roll Random Number"],
+    ["random_number", "Roll Random Number"],
+    ["weighted_choice", "Choose Random Outcome"],
     ["compare", "Compare Values"],
     ["branch", "If / Else (compare)"],
-    ["set_variable", "Set Variable"],
-    ["get_variable", "Get Variable"],
-    ["modify_variable", "Add / Subtract"],
-    ["clamp", "Clamp"],
-    ["require_resource", "Require Resource"],
-    ["modify_resource", "Modify Resource"],
-    ["nearest_target", "Nearest Target"],
+    ["set_variable", "Save Value"],
+    ["get_variable", "Read Value"],
+    ["modify_variable", "Change Value"],
+    ["clamp", "Limit Number to Range"],
+    ["require_resource", "If Enough Resource"],
+    ["modify_resource", "Change Resource"],
+    ["nearest_target", "Find Nearest"],
     ["filter_targets", "Filter Targets"],
-    ["despawn", "Despawn"],
-    ["trigger_skill_action", "Trigger Skill"],
-    ["trigger_effect", "Apply Debuff (trigger)"],
-    ["play_sound", "Sound"],
+    ["despawn", "Remove Spawned Entity"],
+    ["trigger_skill_action", "Activate Another Skill"],
+    ["trigger_effect", "Apply Debuff"],
+    ["play_sound", "Play Sound"],
     ["teleport", "Teleport"],
     ["cancel_cast", "Cancel Cast"],
     ["set_cooldown", "Set Cooldown"],
@@ -7327,6 +7360,7 @@ function leSkFlowApplyIdRename(oldId, newId) {
     ".le-flow-onattacked",
     ".le-flow-onenter",
     ".le-flow-onexit",
+    ".le-flow-ondeath",
     ".le-flow-roll-node",
     ".le-flow-roll-def",
     ".le-flow-wchoice-node",
@@ -7626,6 +7660,10 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
   const fieldsEl = nodeEl.querySelector(".le-sk-fields");
   if (!fieldsEl) return;
   const k = String(kind || "").trim();
+  if (k === "face_target") {
+    fieldsEl.innerHTML = `<p class="hint" style="margin:0;font-size:0.8rem;color:var(--muted)">Turns the caster to face the current target (yaw). Wire after Find Targets or When Attack Hits.</p>`;
+    return;
+  }
   if (k === "look" || k === "vfx") {
     const p = prefParams && typeof prefParams === "object" ? prefParams : {};
     const src = String(p.source || "procedural").trim();
@@ -7727,9 +7765,13 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
         </div>
         <div class="row">
           <div><label>tick every (s)</label><input class="le-flow-del-tick" type="number" min="0" step="0.05" value="${String(p.tick_interval_seconds != null ? p.tick_interval_seconds : 1)}" /></div>
+          <div><label>arm after (s)</label><input class="le-flow-del-arm" type="number" min="0" step="0.05" value="${String(p.arm_delay_seconds != null ? p.arm_delay_seconds : (p.arm_delay_ticks != null ? (Number(p.arm_delay_ticks) / 20) : 0))}" /></div>
+        </div>
+        <div class="row">
+          <div><label>max On Enter (0 = unlimited)</label><input class="le-flow-del-trig" type="number" min="0" step="1" value="${String(p.max_triggers != null ? p.max_triggers : (p.trigger_cap != null ? p.trigger_cap : 0))}" /></div>
           <div></div>
         </div>
-        <p class="hint" style="margin:0.35rem 0 0;font-size:0.78rem;color:var(--muted)">Duration keeps the zone alive (Pillar of Fire / Cold Wave). Wire <span class="mono">on_tick</span> for damage each interval.</p>
+        <p class="hint" style="margin:0.35rem 0 0;font-size:0.78rem;color:var(--muted)">Duration keeps the zone alive. Arm after delays Enters Zone / Every Tick; anyone already inside fires Enters Zone when it arms. Max On Enter of 1 is a one-shot trap. Wire combat on those ports, not Next.</p>
       </div>
       <div class="le-flow-del-panel" data-del-for="falling_block falling">
         <div class="row">
@@ -7846,7 +7888,7 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
         <div><label>wait ticks</label><input class="le-flow-wait-ticks" type="number" min="0" step="1" value="${attrEsc(String(ticks))}" placeholder="40" /></div>
         <div><label>or seconds</label><input class="le-flow-wait-sec" type="number" min="0" step="0.05" value="${attrEsc(String(secs))}" /></div>
       </div>
-      <p class="hint" style="margin:0.35rem 0 0;font-size:0.78rem;color:var(--muted)">Pauses, then runs Next. A Sequence stage does not wait unless you insert this node.</p>`;
+      <p class="hint" style="margin:0.35rem 0 0;font-size:0.78rem;color:var(--muted)">Pauses this chain, then runs Next. As a Sequence stage it pauses remaining stages — do not also wire Next off that Wait; list the follow-up as the next stage.</p>`;
     return;
   }
   if (k === "pulse" || k === "repeat") {
@@ -7893,9 +7935,10 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
     const p = prefParams && typeof prefParams === "object" ? prefParams : {};
     fieldsEl.innerHTML = `
       <div class="row">
-        <div><label>amount</label><input class="le-flow-heal-amt" type="number" min="0" step="0.5" value="${String(p.amount != null ? p.amount : 0)}" /></div>
-        <div><label>percent_max</label><input class="le-flow-heal-pct" type="number" min="0" max="1" step="0.01" value="${String(p.percent_max != null ? p.percent_max : 0)}" /></div>
-      </div>`;
+        <div><label>amount (HP)</label><input class="le-flow-heal-amt" type="number" min="0" step="0.5" value="${String(p.amount != null ? p.amount : 0)}" /></div>
+        <div><label>percent of max (0–1)</label><input class="le-flow-heal-pct" type="number" min="0" max="1" step="0.01" value="${String(p.percent_max != null ? p.percent_max : 0)}" /></div>
+      </div>
+      <p class="hint" style="margin:0.35rem 0 0;font-size:0.78rem;color:var(--muted)">Heals the current target list. If none, heals you. Wire after Find Targets, When Attack Hits, or Enters Zone.</p>`;
     return;
   }
   if (k === "movement") {
@@ -8163,11 +8206,13 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
             ${[
               ["chance", "Random chance"],
               ["compare", "Compare values"],
-              ["has_effect", "Entity has effect"],
+              ["has_effect", "Target has effect"],
               ["has_targets", "Targets found"],
               ["successful_hit", "Attack hits"],
               ["resource", "Has resource"],
-              ["los", "Has line of sight"],
+              ["los", "Target is visible"],
+              ["target_hp", "Target HP %"],
+              ["last_hit_crit", "Last hit was a crit"],
             ].map(([v, lab]) => `<option value="${v}"${cond === v || (cond === "random_chance" && v === "chance") ? " selected" : ""}>${lab}</option>`).join("")}
           </select>
         </div>
@@ -8206,8 +8251,24 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
           <div><label>amount</label><input class="le-flow-res-amt" type="number" min="0" step="1" value="${attrEsc(String(p.amount != null ? p.amount : 20))}" /></div>
         </div>
       </div>
+      <div class="le-flow-if-pane" data-if="target_hp">
+        <div class="row">
+          <div>
+            <label>op</label>
+            <select class="le-flow-hp-op">
+              ${[["gte",">="],["gt",">"],["lte","<="],["lt","<"],["eq","="],["ne","≠"]].map(([v, lab]) =>
+                `<option value="${v}"${op === v ? " selected" : ""}>${lab}</option>`).join("")}
+            </select>
+          </div>
+          <div><label>HP fraction (0–1)</label><input class="mono le-flow-hp-right" type="text" value="${attrEsc(String(p.right != null ? p.right : "0.5"))}" /></div>
+        </div>
+        <p class="hint" style="margin:0.25rem 0 0;font-size:0.75rem;color:var(--muted)">Uses the current target’s remaining health as a fraction of max HP.</p>
+      </div>
+      <div class="le-flow-if-pane" data-if="last_hit_crit">
+        <p class="hint" style="margin:0.15rem 0 0;font-size:0.78rem;color:var(--muted)">True if the last Deal Damage in this cast scored a crit. Snapshot is kept on the cast so delayed When Attack Hits chains still see it.</p>
+      </div>
       <label class="inline-check" style="margin-top:0.35rem"><input class="le-flow-if-not" type="checkbox"${p.not || p.invert ? " checked" : ""} /> invert (NOT)</label>
-      <p class="hint" style="margin:0.35rem 0 0;font-size:0.78rem;color:var(--muted)">Wire <b>True</b> and <b>False</b>. Compare operands: number, <span class="mono">var:name</span>, <span class="mono">stat:physical_attack</span>, <span class="mono">resource:mana</span>.</p>
+      <p class="hint" style="margin:0.35rem 0 0;font-size:0.78rem;color:var(--muted)">Wire <b>True</b> and <b>False</b>. Compare operands: number, <span class="mono">var:name</span>, <span class="mono">stat:physical_attack</span>, <span class="mono">resource:mana</span>, <span class="mono">target:hp_pct</span>.</p>
     `;
     const syncIf = () => {
       const c = String(fieldsEl.querySelector(".le-flow-if-cond")?.value || "chance");
@@ -8225,7 +8286,7 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
     fieldsEl.innerHTML = `
       <div class="le-flow-seq-rows" style="display:flex;flex-direction:column;gap:0.35rem"></div>
       <div style="margin-top:0.35rem"><button type="button" class="le-btn le-flow-seq-add">+ Add stage</button></div>
-      <p class="hint" style="margin:0.35rem 0 0;font-size:0.78rem;color:var(--muted)">Stages run in order. Each stage is the first node of a chain. Insert Wait if you need a pause — Sequence does not delay by itself.</p>
+      <p class="hint" style="margin:0.35rem 0 0;font-size:0.78rem;color:var(--muted)">Stages run in order. Each stage starts a chain (follows that node’s Next). A stage already reached by an earlier Next is skipped. Insert Wait as its own stage to pause. Sequence Next runs once after every stage.</p>
     `;
     const rowsEl = fieldsEl.querySelector(".le-flow-seq-rows");
     const mkRow = (nodeId) => {
@@ -8387,6 +8448,7 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
             <option value="add"${op === "add" ? " selected" : ""}>add</option>
             <option value="sub"${op === "sub" ? " selected" : ""}>subtract</option>
             <option value="mul"${op === "mul" ? " selected" : ""}>multiply</option>
+            <option value="div"${op === "div" ? " selected" : ""}>divide</option>
             <option value="set"${op === "set" ? " selected" : ""}>set</option>
             <option value="reset"${op === "reset" ? " selected" : ""}>reset</option>
           </select>
@@ -8472,8 +8534,10 @@ function renderLeSkFlowNodeFields(nodeEl, kind, prefParams) {
         <div class="field-full">
           <label>target</label>
           <select class="le-flow-despawn-tgt">
-            <option value="summons"${who !== "current" ? " selected" : ""}>all of your summons</option>
+            <option value="summons"${who !== "current" && who !== "zone" && who !== "trap" && who !== "ground" && who !== "all" ? " selected" : ""}>all of your summons</option>
             <option value="current"${who === "current" ? " selected" : ""}>current target (if summoned)</option>
+            <option value="zone"${who === "zone" || who === "trap" || who === "ground" ? " selected" : ""}>your ground zones / traps</option>
+            <option value="all"${who === "all" ? " selected" : ""}>summons and zones</option>
           </select>
         </div>
       </div>
@@ -8822,67 +8886,74 @@ const LE_SK_FLOW = {
   batch: false,
   uid: 1,
   dragging: null,
+  view: { scale: 1, x: 0, y: 0 },
+  panning: null,
+  hoverWire: null,
 };
 const LE_SK_FLOW_KIND_SHORT = {
   delivery: "When Skill Cast",
-  movement: "Move",
+  movement: "Move Caster",
   delay: "Wait",
   wait: "Wait",
-  pulse: "Repeat ticks",
-  repeat: "Repeat ticks",
-  repeat_times: "Repeat X times",
-  sequence: "Sequence",
-  stop: "Stop",
-  cleanse: "Cleanse",
-  require_effect: "Has effect",
-  consume_effect: "Consume effect",
-  require_targets: "Targets found",
-  successful_hit: "Attack hits",
-  chance: "Random chance",
-  require_los: "Has line of sight",
-  roll: "Random roll",
-  random_number: "Random number",
-  weighted_choice: "Weighted choice",
-  compare: "Compare values",
+  pulse: "Repeat Every X Ticks",
+  repeat: "Repeat Every X Ticks",
+  repeat_times: "Repeat X Times",
+  sequence: "Run Steps in Order",
+  stop: "Stop Here",
+  cleanse: "Remove Negative Effects",
+  require_effect: "If Target Has Effect",
+  consume_effect: "Consume Effect",
+  require_targets: "If Targets Found",
+  successful_hit: "If Attack Hits",
+  chance: "If Random Chance",
+  require_los: "If Target Is Visible",
+  roll: "Roll Random Number",
+  random_number: "Roll Random Number",
+  weighted_choice: "Choose Random Outcome",
+  compare: "Compare Values",
   branch: "If / Else",
   if_else: "If / Else",
-  set_variable: "Set variable",
-  get_variable: "Get variable",
-  modify_variable: "Add / subtract",
-  clamp: "Clamp",
-  require_resource: "Need resource",
-  modify_resource: "Modify resource",
-  nearest_target: "Nearest",
-  filter_targets: "Filter",
-  despawn: "Despawn",
-  trigger_skill_action: "Trigger skill",
-  totem_turret: "Turret",
+  set_variable: "Save Value",
+  get_variable: "Read Value",
+  modify_variable: "Change Value",
+  clamp: "Limit Number to Range",
+  require_resource: "If Enough Resource",
+  modify_resource: "Change Resource",
+  nearest_target: "Find Nearest",
+  filter_targets: "Filter Targets",
+  face_target: "Face Target",
+  despawn: "Remove Spawned Entity",
+  trigger_skill_action: "Activate Another Skill",
+  totem_turret: "Create Totem / Turret",
   melee: "Melee",
-  deal_damage: "Deal damage",
-  damage: "Deal damage",
-  projectile: "Projectile",
-  ground: "Ground zone",
-  ground_rupture: "Rupture",
-  buff: "Apply buff",
-  debuff: "Apply debuff",
-  trigger_effect: "Apply debuff",
-  summon: "Summon entity",
-  particles: "Particle",
-  look: "Particle",
-  cast_animation: "Animation",
-  play_sound: "Sound",
-  knockback: "Knock / Pull",
-  aggro: "Set aggro",
+  deal_damage: "Deal Damage",
+  damage: "Deal Damage",
+  projectile: "Launch Projectile",
+  ground: "Create Ground Zone",
+  ground_rupture: "Create Ground Zone",
+  buff: "Apply Buff",
+  debuff: "Apply Debuff",
+  trigger_effect: "Apply Debuff",
+  summon: "Summon Entity",
+  particles: "Play Particle Effect",
+  look: "Play Particle Effect",
+  cast_animation: "Play Cast Animation",
+  play_sound: "Play Sound",
+  knockback: "Push / Pull",
+  aggro: "Taunt",
+  heal: "Heal Target",
+  restore_mana: "Restore Mana",
   teleport: "Teleport",
-  cancel_cast: "Cancel",
-  set_cooldown: "Cooldown",
+  cancel_cast: "Cancel Cast",
+  set_cooldown: "Set Cooldown",
+  hit: "Find Targets",
 };
 
 const LE_SK_HELP = {
   overview: {
     title: "How to make a fireball",
     html: `
-      <p>Everything is a node. Click <b>Fire Bolt</b> for a ready graph, or wire it yourself:</p>
+      <p>Everything is a node. Click <b>Fireball</b> for a ready graph, or wire it yourself:</p>
       <ol>
         <li><b>Cast</b> — start. Does not deal damage.</li>
         <li><b>Particle</b> — VFX at you while casting (attachment caster).</li>
@@ -8908,11 +8979,11 @@ const LE_SK_HELP = {
   },
   ifelse: {
     title: "If / Else",
-    html: `<p>One condition with <b>True</b> and <b>False</b> outputs. Pick the condition in the inspector (random chance, compare values, has effect, …) instead of chaining extra gate nodes. Existing On Hit / On Tick / On Expire ports on projectiles and zones still work the same.</p>`
+    html: `<p>One condition with <b>True</b> and <b>False</b> outputs — exactly one runs. Pick the condition in the inspector. Next on this node is only used when a branch is unwired. Event ports on projectiles and zones (On Hit / On Enter / On Expire) are separate later chains, not Next.</p>`
   },
   sequence: {
     title: "Sequence",
-    html: `<p>Runs stages in order. Each stage is the first node of a chain (Particle → Sound). A sequence does not wait on its own — insert <b>Wait X Ticks</b> as a stage if you need a pause.</p>`
+    html: `<p>Runs listed stages in order. Each stage starts a chain (that node’s Next / True / False). If a later stage already ran on an earlier Next, it is skipped so actions do not fire twice. Insert <b>Wait</b> as its own stage to pause remaining stages — Wait’s Next is ignored then. Sequence Next runs once after every stage finishes.</p>`
   },
   projectile: {
     title: "Projectile",
@@ -8935,11 +9006,11 @@ const LE_SK_HELP = {
   },
   ground: {
     title: "Ground Zone",
-    html: `<p>A circle on the ground. Wire <span class="mono">on_tick</span> to Damage for a repeating zone. Wire <span class="mono">on_enter</span> / <span class="mono">on_exit</span> for traps that fire when an enemy steps in or leaves. Duration keeps it alive.</p>`
+    html: `<p>A circle on the ground. <b>Next</b> is spawn-time only (Particle / Sound). Combat belongs on <b>On Enter</b> / <b>On Tick</b> / <b>On Expire</b> so it does not run twice. <b>Arm after</b> delays those events; anyone already inside fires On Enter when it arms. Duration keeps it alive. Despawn with a Despawn node (target: zones).</p>`
   },
   summon: {
     title: "Summon",
-    html: `<p>Spawns a mob that fights for the caster. Set the entity type, then optionally <span class="mono">behavior_skill_id</span> so the summon casts a Vaerun skill while it has aggro. Do not rebuild mob AI inside this node. <span class="mono">summon_stats.mob_skill</span> still overrides that field if set.</p>`
+    html: `<p>Spawns a mob that fights for the caster. Set the entity type, then optionally <span class="mono">behavior_skill_id</span> so the summon casts a Vaerun skill while it has aggro. Wire <b>On Death</b> and <b>On Expire</b> for when it dies or its lifetime ends (those do not run at spawn). <span class="mono">summon_stats.mob_skill</span> still overrides behavior if set.</p>`
   },
   travel: {
     title: "Travel stub",
@@ -8988,7 +9059,7 @@ function leSkHelpKeyForNode(node) {
     const sm = String(node.querySelector(".le-flow-spell-mode")?.value || "").trim();
     return sm === "projectile_falling" ? "rain" : "projectile";
   }
-  if (k === "hit") return "hit";
+  if (k === "hit" || k === "face_target") return "hit";
   if (k === "damage" || k === "deal_damage") return "damage";
   if (k === "look" || k === "vfx" || k === "cast_animation" || k === "play_sound") return "look";
   if (k === "trigger_effect" || k === "buff" || k === "debuff") return "effect";
@@ -9048,13 +9119,14 @@ const LE_SK_FLOW_PORT_META = {
   on_stop: { label: "On Stop", color: "#c4b5fd", sel: ".le-flow-onstop" },
   on_pass: { label: "True", color: "#6ee7a8", sel: ".le-flow-onpass" },
   on_fail: { label: "False", color: "#f1948a", sel: ".le-flow-onfail" },
-  per_target: { label: "On Hit", color: "#ffb86b", sel: ".le-flow-hit-per" },
+  per_target: { label: "When Attack Hits", color: "#ffb86b", sel: ".le-flow-hit-per" },
   first_only: { label: "First Hit", color: "#fb923c", sel: ".le-flow-hit-first" },
-  on_tick: { label: "On Tick", color: "#67e8f9", sel: ".le-flow-ontick" },
-  on_expire: { label: "On Expire", color: "#38bdf8", sel: ".le-flow-onexpire" },
-  on_attacked: { label: "On Attacked", color: "#22d3ee", sel: ".le-flow-onattacked" },
-  on_enter: { label: "On Enter", color: "#86efac", sel: ".le-flow-onenter" },
-  on_exit: { label: "On Exit", color: "#fcd34d", sel: ".le-flow-onexit" },
+  on_tick: { label: "Every Tick", color: "#67e8f9", sel: ".le-flow-ontick" },
+  on_expire: { label: "Duration Ends", color: "#38bdf8", sel: ".le-flow-onexpire" },
+  on_attacked: { label: "When Attacked", color: "#22d3ee", sel: ".le-flow-onattacked" },
+  on_enter: { label: "Enters Zone", color: "#86efac", sel: ".le-flow-onenter" },
+  on_exit: { label: "Leaves Zone", color: "#fcd34d", sel: ".le-flow-onexit" },
+  on_death: { label: "Summon Dies", color: "#fb7185", sel: ".le-flow-ondeath" },
 };
 
 function leSkFlowEnsureUid(node) {
@@ -9069,6 +9141,9 @@ function leSkFlowPortsForKind(kind) {
   if (k === "require_targets" || k === "successful_hit" || k === "chance" || k === "require_los" || k === "hit" || k === "require_effect" || k === "consume_effect" || k === "compare" || k === "branch" || k === "if_else" || k === "require_resource" || k === "nearest_target" || k === "filter_targets") {
     ports.push("on_pass", "on_fail");
   }
+  if (k === "face_target") {
+    return ports;
+  }
   if (k === "repeat_times") ports.push("on_tick");
   if (k === "melee" || k === "deal_damage" || k === "damage" || k === "spell_visual" || k === "projectile" || k === "ground" || k === "delivery" || k === "totem_turret") {
     ports.push("per_target", "first_only");
@@ -9079,7 +9154,52 @@ function leSkFlowPortsForKind(kind) {
   if (k === "delivery" || k === "ground") {
     ports.push("on_enter", "on_exit");
   }
+  if (k === "summon") {
+    ports.push("on_expire", "on_death");
+  }
   return ports;
+}
+
+function leSkFlowIsCastNode(n) {
+  if (!n) return false;
+  const k = String(n.querySelector(".le-flow-kind")?.value || "").trim();
+  if (k !== "delivery") return false;
+  const mode = String(n.querySelector(".le-flow-del-mode")?.value || "instant").trim();
+  return !mode || mode === "instant";
+}
+
+function leSkFlowCastNodes() {
+  const wrap = document.getElementById("le_sk_flow_nodes");
+  if (!wrap) return [];
+  return [...wrap.querySelectorAll(":scope > .le-flow-node")].filter(leSkFlowIsCastNode);
+}
+
+function leSkFlowStageToGraph(clientX, clientY) {
+  const stage = document.getElementById("le_sk_graph_stage");
+  if (!stage) return { x: 0, y: 0 };
+  const rect = stage.getBoundingClientRect();
+  const v = LE_SK_FLOW.view || { scale: 1, x: 0, y: 0 };
+  const s = v.scale || 1;
+  return {
+    x: (clientX - rect.left + stage.scrollLeft - (v.x || 0)) / s,
+    y: (clientY - rect.top + stage.scrollTop - (v.y || 0)) / s,
+  };
+}
+
+function leSkFlowApplyView() {
+  const host = document.getElementById("le_sk_graph");
+  if (!host) return;
+  const v = LE_SK_FLOW.view || { scale: 1, x: 0, y: 0 };
+  host.style.transform = `translate(${v.x || 0}px, ${v.y || 0}px) scale(${v.scale || 1})`;
+}
+
+function leSkFlowClearPort(fromNode, portKey) {
+  const meta = LE_SK_FLOW_PORT_META[portKey];
+  if (!meta || !fromNode) return;
+  const sel = fromNode.querySelector(meta.sel);
+  if (sel) leSkFlowSetSelectValue(sel, "");
+  if (typeof updateLeSkCompileWarn === "function") updateLeSkCompileWarn();
+  leSkFlowRefreshGraph();
 }
 
 function leSkFlowSelectNode(node) {
@@ -9097,7 +9217,7 @@ function leSkFlowSelectNode(node) {
 
 function leSkFlowSetLinkHint(text) {
   const el = document.getElementById("le_sk_link_hint");
-  if (el) el.textContent = text || "Click a port, then another node to wire. Drag cards to arrange.";
+  if (el) el.textContent = text || "Drag a port to another node’s input. Click a wire to delete. Wheel zoom · middle-drag pan.";
 }
 
 function leSkFlowNodeFromUid(uid) {
@@ -9146,7 +9266,7 @@ function leSkFlowMarkLinkingUi() {
   });
   const label = L ? (LE_SK_FLOW_PORT_META[L.port]?.label || "port") : "";
   leSkFlowSetLinkHint(L
-    ? "Click another node to connect " + label + " (or drag onto it). Esc / empty click cancels."
+    ? "Drop on an input port to connect " + label + ". Esc / empty click cancels."
     : "");
 }
 
@@ -9172,6 +9292,11 @@ function leSkFlowWire(fromNode, portKey, toId) {
 function leSkFlowCompleteLink(toNode) {
   const L = LE_SK_FLOW.linking;
   if (!L || !toNode || toNode === L.node) return false;
+  if (leSkFlowIsCastNode(toNode)) {
+    leSkFlowSetLinkHint("When Skill Cast cannot take an incoming execution wire.");
+    leSkFlowCancelLink();
+    return false;
+  }
   const toId = String(toNode.querySelector(".le-flow-id")?.value || "").trim();
   if (!toId) {
     leSkFlowSetLinkHint("That node needs an id before it can be linked.");
@@ -9236,8 +9361,10 @@ function leSkFlowAutoLayout() {
 
 function leSkFlowMakeEntry() {
   const wrap = document.getElementById("le_sk_flow_nodes");
-  const node = LE_SK_FLOW.selected;
-  if (!wrap || !node) return;
+  if (!wrap) return;
+  const casts = leSkFlowCastNodes();
+  const node = casts[0] || LE_SK_FLOW.selected;
+  if (!node) return;
   wrap.insertBefore(node, wrap.firstChild);
   leSkFlowRefreshGraph();
   if (typeof updateLeSkCompileWarn === "function") updateLeSkCompileWarn();
@@ -9315,15 +9442,17 @@ function leSkFlowCardMeta(n, id, kind, byId) {
     else if (mode === "summon") { cat = "delivery"; title = "Summon Entity"; sub = "Summon"; }
     else { cat = "delivery"; title = "Start"; sub = mode.replace(/_/g, " "); }
   } else if (k === "hit") {
-    cat = "hit"; title = "Hit";
+    cat = "hit"; title = "Find Targets";
     sub = String(n.querySelector(".le-flow-hit-shape")?.value || "radius").replace("look", "Look At Mob");
     sub = sub.charAt(0).toUpperCase() + sub.slice(1);
+  } else if (k === "face_target") {
+    cat = "hit"; title = "Face Target"; sub = "Turn toward target";
   } else if (k === "look" || k === "vfx" || k === "particles") {
-    cat = "look"; title = "Look"; sub = "Particle";
+    cat = "look"; title = "Play Particle Effect"; sub = "VFX";
   } else if (k === "cast_animation") {
-    cat = "look"; title = "Look"; sub = "Animation";
+    cat = "look"; title = "Play Cast Animation"; sub = "Animation";
   } else if (k === "play_sound") {
-    cat = "look"; title = "Look"; sub = "Sound";
+    cat = "look"; title = "Play Sound"; sub = "Sound";
   } else if (k === "trigger_effect" || k === "debuff") {
     cat = "act"; title = "Apply Debuff"; sub = "On hit";
   } else if (k === "buff") {
@@ -9491,14 +9620,16 @@ function leSkFlowRefreshGraph() {
     const ports = leSkFlowPortsForKind(kind);
     const shownPorts = (kind === "if_else")
       ? ["on_pass", "on_fail"]
-      : ports.filter((key) => ["next", "per_target", "on_expire", "on_tick", "on_fail", "on_pass", "on_enter", "on_exit"].includes(key));
+      : ports.filter((key) => ["next", "per_target", "on_expire", "on_tick", "on_fail", "on_pass", "on_enter", "on_exit", "on_death"].includes(key));
     const portHtml = shownPorts.map((key) => {
       const meta = LE_SK_FLOW_PORT_META[key];
       const to = String(n.querySelector(meta.sel)?.value || "").trim();
       return `<div class="le-sk-gport${LE_SK_FLOW.linking && LE_SK_FLOW.linking.uid === n.dataset.flowUid && LE_SK_FLOW.linking.port === key ? " on" : ""}" data-port="${key}" title="${meta.label}${to ? " → " + to : ""}"><span>${meta.label}</span><span class="dot" style="background:${meta.color}"></span></div>`;
     }).join("");
     const meta = leSkFlowCardMeta(n, id, kind, byId);
-    cards.push(`<div class="le-sk-gnode cat-${meta.cat}${n === LE_SK_FLOW.selected ? " on" : ""}${i === 0 ? " entry" : ""}" data-uid="${n.dataset.flowUid}" style="left:${Number(n.dataset.gx) || 24}px;top:${Number(n.dataset.gy) || 24}px">
+    const isCast = leSkFlowIsCastNode(n);
+    cards.push(`<div class="le-sk-gnode cat-${meta.cat}${n === LE_SK_FLOW.selected ? " on" : ""}${i === 0 ? " entry" : ""}${isCast ? " cast-start" : ""}" data-uid="${n.dataset.flowUid}" style="left:${Number(n.dataset.gx) || 24}px;top:${Number(n.dataset.gy) || 24}px">
+      ${isCast ? "" : `<div class="le-sk-gin" title="In"></div>`}
       <div class="le-sk-ghead">
         <span class="le-sk-gico">${meta.icon}</span>
         <div>
@@ -9527,6 +9658,7 @@ function leSkFlowRefreshGraph() {
   }
   const empty = document.getElementById("le_sk_inspect_empty");
   if (empty) empty.classList.toggle("hidden", !!LE_SK_FLOW.selected);
+  leSkFlowApplyView();
   if (typeof window.leSkStudioAfterGraph === "function") window.leSkStudioAfterGraph();
   if (typeof window.leBuilderSession?.note === "function" && !LE_SK_FLOW.batch) window.leBuilderSession.note();
 }
@@ -9582,7 +9714,9 @@ function leSkFlowPaintWires() {
       const my = (y1 + y2) * 0.5 - 10;
       const lab = meta.label;
       const tw = Math.max(28, lab.length * 6.2);
-      paths.push(`<path d="M${x1} ${y1} C${x1 + mid} ${y1}, ${x2 - mid} ${y2}, ${x2} ${y2}" fill="none" stroke="${meta.color}" stroke-width="2" stroke-opacity="0.9"/>`);
+      const d = `M${x1} ${y1} C${x1 + mid} ${y1}, ${x2 - mid} ${y2}, ${x2} ${y2}`;
+      paths.push(`<path class="le-sk-wire-hit" data-from-uid="${n.dataset.flowUid}" data-port="${key}" d="${d}" fill="none" stroke="transparent" stroke-width="12"/>`);
+      paths.push(`<path class="le-sk-wire" data-from-uid="${n.dataset.flowUid}" data-port="${key}" d="${d}" fill="none" stroke="${meta.color}" stroke-width="2" stroke-opacity="0.9"/>`);
       paths.push(`<rect x="${mx - tw / 2 - 5}" y="${my - 8}" width="${tw + 10}" height="16" rx="8" fill="#0d1626" stroke="${meta.color}" stroke-opacity="0.55"/>`);
       paths.push(`<text x="${mx}" y="${my + 4}" text-anchor="middle" font-size="9" font-family="Segoe UI, system-ui, sans-serif" fill="${meta.color}">${lab}</text>`);
     });
@@ -9622,11 +9756,49 @@ function leSkFlowEnsureGraph() {
   const stage = document.getElementById("le_sk_graph_stage");
   if (!stage) return;
   LE_SK_FLOW.inited = true;
+  const svg = document.getElementById("le_sk_graph_wires");
+  svg?.addEventListener("click", (e) => {
+    const hit = e.target.closest(".le-sk-wire-hit, .le-sk-wire");
+    if (!hit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const uid = hit.getAttribute("data-from-uid");
+    const port = hit.getAttribute("data-port");
+    const from = leSkFlowNodeFromUid(uid);
+    if (from && port) leSkFlowClearPort(from, port);
+  });
+  stage.addEventListener("wheel", (e) => {
+    if (e.ctrlKey) return;
+    e.preventDefault();
+    const v = LE_SK_FLOW.view;
+    const old = v.scale || 1;
+    const next = Math.max(0.4, Math.min(2.4, old * (e.deltaY > 0 ? 0.92 : 1.08)));
+    const pt = leSkFlowStageToGraph(e.clientX, e.clientY);
+    v.x = e.clientX - stage.getBoundingClientRect().left + stage.scrollLeft - pt.x * next;
+    v.y = e.clientY - stage.getBoundingClientRect().top + stage.scrollTop - pt.y * next;
+    v.scale = next;
+    leSkFlowApplyView();
+  }, { passive: false });
   stage.addEventListener("pointerdown", (e) => {
+    const wireHit = e.target.closest(".le-sk-wire-hit, .le-sk-wire");
+    if (wireHit) return;
+    if (e.button === 1 || (e.button === 0 && (e.altKey || e.buttons === 4))) {
+      e.preventDefault();
+      LE_SK_FLOW.panning = { x: e.clientX - (LE_SK_FLOW.view.x || 0), y: e.clientY - (LE_SK_FLOW.view.y || 0) };
+      stage.classList.add("panning");
+      try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+      return;
+    }
     if (e.button != null && e.button !== 0) return;
+    const gin = e.target.closest(".le-sk-gin");
     const port = e.target.closest(".le-sk-gport");
     const card = e.target.closest(".le-sk-gnode");
     const node = card ? leSkFlowNodeFromUid(card.getAttribute("data-uid")) : null;
+    if (gin && node && LE_SK_FLOW.linking) {
+      e.preventDefault();
+      leSkFlowCompleteLink(node);
+      return;
+    }
     if (port && node) {
       e.preventDefault();
       const portKey = port.getAttribute("data-port");
@@ -9649,13 +9821,13 @@ function leSkFlowEnsureGraph() {
         return;
       }
       leSkFlowSelectNode(node);
-      const rect = stage.getBoundingClientRect();
+      const g = leSkFlowStageToGraph(e.clientX, e.clientY);
       LE_SK_FLOW.dragging = {
         node,
         card,
         moved: false,
-        ox: (e.clientX - rect.left + stage.scrollLeft) - (Number(node.dataset.gx) || 0),
-        oy: (e.clientY - rect.top + stage.scrollTop) - (Number(node.dataset.gy) || 0),
+        ox: g.x - (Number(node.dataset.gx) || 0),
+        oy: g.y - (Number(node.dataset.gy) || 0),
       };
       try { card.setPointerCapture(e.pointerId); } catch (_) {}
       return;
@@ -9665,18 +9837,24 @@ function leSkFlowEnsureGraph() {
     }
   });
   stage.addEventListener("pointermove", (e) => {
+    if (LE_SK_FLOW.panning) {
+      LE_SK_FLOW.view.x = e.clientX - LE_SK_FLOW.panning.x;
+      LE_SK_FLOW.view.y = e.clientY - LE_SK_FLOW.panning.y;
+      leSkFlowApplyView();
+      return;
+    }
     if (LE_SK_FLOW.linking) {
       const over = leSkFlowNodeFromPoint(e.clientX, e.clientY);
       document.querySelectorAll(".le-sk-gnode").forEach((c) => {
         const uid = c.getAttribute("data-uid");
-        c.classList.toggle("drop", !!(over && uid === over.dataset.flowUid && uid !== LE_SK_FLOW.linking.uid));
+        c.classList.toggle("drop", !!(over && uid === over.dataset.flowUid && uid !== LE_SK_FLOW.linking.uid && !c.classList.contains("cast-start")));
       });
     }
     const d = LE_SK_FLOW.dragging;
     if (!d || !d.node || !d.card) return;
-    const rect = stage.getBoundingClientRect();
-    const x = Math.max(8, e.clientX - rect.left + stage.scrollLeft - d.ox);
-    const y = Math.max(8, e.clientY - rect.top + stage.scrollTop - d.oy);
+    const g = leSkFlowStageToGraph(e.clientX, e.clientY);
+    const x = Math.max(8, g.x - d.ox);
+    const y = Math.max(8, g.y - d.oy);
     if (Math.abs(x - (Number(d.node.dataset.gx) || 0)) + Math.abs(y - (Number(d.node.dataset.gy) || 0)) > 3) d.moved = true;
     d.node.dataset.gx = String(Math.round(x));
     d.node.dataset.gy = String(Math.round(y));
@@ -9690,6 +9868,11 @@ function leSkFlowEnsureGraph() {
     leSkFlowPaintWires();
   });
   const endDrag = (e) => {
+    if (LE_SK_FLOW.panning) {
+      LE_SK_FLOW.panning = null;
+      stage.classList.remove("panning");
+      try { stage.releasePointerCapture(e.pointerId); } catch (_) {}
+    }
     if (LE_SK_FLOW.dragging?.card) {
       try { LE_SK_FLOW.dragging.card.releasePointerCapture(e.pointerId); } catch (_) {}
     }
@@ -9719,7 +9902,13 @@ function addLeSkFlowNode(kindPref, pref) {
   const wrap = document.getElementById("le_sk_flow_nodes");
   if (!wrap) return;
   const idx = wrap.querySelectorAll(":scope > .le-flow-node").length + 1;
-  const id0 = (pref && pref.id ? String(pref.id) : ("n" + idx)).trim() || ("n" + idx);
+  let id0 = (pref && pref.id ? String(pref.id) : ("n" + idx)).trim() || ("n" + idx);
+  const taken = typeof leSkCollectFlowNodeIds === "function" ? leSkCollectFlowNodeIds() : [];
+  if (taken.includes(id0)) {
+    let n = 2;
+    while (taken.includes(id0 + "_" + n)) n += 1;
+    id0 = id0 + "_" + n;
+  }
   const kind0 = (kindPref || (pref && pref.kind) || "movement").trim();
   const params0 = pref && pref.params && typeof pref.params === "object" ? pref.params : {};
   const emit0 = pref && pref.emit && typeof pref.emit === "object" ? pref.emit : {};
@@ -9729,24 +9918,31 @@ function addLeSkFlowNode(kindPref, pref) {
   node.style.marginTop = "0.5rem";
   node.innerHTML = `
     <div class="step-head">
-      <input class="mono le-flow-id" type="text" value="${attrEsc(id0)}" style="max-width:7.5rem" />
-      <select class="le-flow-kind">${leSkFlowKindOptionsHtml(kind0)}</select>
+      <span class="le-flow-card-title">${attrEsc(LE_SK_FLOW_KIND_SHORT[kind0] || kind0 || "Node")}</span>
       <button type="button" class="ghost le-flow-remove">Remove</button>
     </div>
-    <div class="fields">
-      <div><label>Next</label><select class="le-flow-next">${leSkFlowNodeIdOptionsHtml(emit0.next || "")}</select></div>
-      <div class="le-flow-emit-onstop" style="display:none"><label>On Stop</label><select class="le-flow-onstop">${leSkFlowNodeIdOptionsHtml(emit0.on_stop || "")}</select></div>
-      <div class="le-flow-emit-gate" style="display:none"><label>True</label><select class="le-flow-onpass">${leSkFlowNodeIdOptionsHtml(emit0.on_pass || "")}</select></div>
-      <div class="le-flow-emit-gate" style="display:none"><label>False</label><select class="le-flow-onfail">${leSkFlowNodeIdOptionsHtml(emit0.on_fail || "")}</select></div>
-      <div class="le-flow-emit-onhit" style="display:none"><label>On Hit</label><select class="le-flow-hit-per">${leSkFlowNodeIdOptionsHtml(emit0.on_hit && emit0.on_hit.per_target ? emit0.on_hit.per_target : "")}</select></div>
-      <div class="le-flow-emit-onhit" style="display:none"><label>First Hit</label><select class="le-flow-hit-first">${leSkFlowNodeIdOptionsHtml(emit0.on_hit && emit0.on_hit.first_only ? emit0.on_hit.first_only : "")}</select></div>
-      <div class="le-flow-emit-life" style="display:none"><label>On Tick</label><select class="le-flow-ontick">${leSkFlowNodeIdOptionsHtml(emit0.on_tick || "")}</select></div>
-      <div class="le-flow-emit-life" style="display:none"><label>On Expire</label><select class="le-flow-onexpire">${leSkFlowNodeIdOptionsHtml(emit0.on_expire || "")}</select></div>
-      <div class="le-flow-emit-life" style="display:none"><label>On Attacked</label><select class="le-flow-onattacked">${leSkFlowNodeIdOptionsHtml(emit0.on_attacked || "")}</select></div>
-      <div class="le-flow-emit-zone" style="display:none"><label>On Enter Zone</label><select class="le-flow-onenter">${leSkFlowNodeIdOptionsHtml(emit0.on_enter || "")}</select></div>
-      <div class="le-flow-emit-zone" style="display:none"><label>On Exit Zone</label><select class="le-flow-onexit">${leSkFlowNodeIdOptionsHtml(emit0.on_exit || "")}</select></div>
-    </div>
     <div class="le-sk-fields step-card" style="margin-top:0.55rem"></div>
+    <details class="le-flow-advanced">
+      <summary>Advanced</summary>
+      <div class="row">
+        <div><label>node id</label><input class="mono le-flow-id" type="text" value="${attrEsc(id0)}" /></div>
+        <div><label>kind</label><select class="le-flow-kind">${leSkFlowKindOptionsHtml(kind0)}</select></div>
+      </div>
+      <div class="fields">
+        <div><label>Next</label><select class="le-flow-next">${leSkFlowNodeIdOptionsHtml(emit0.next || "")}</select></div>
+        <div class="le-flow-emit-onstop" style="display:none"><label>On Stop</label><select class="le-flow-onstop">${leSkFlowNodeIdOptionsHtml(emit0.on_stop || "")}</select></div>
+        <div class="le-flow-emit-gate" style="display:none"><label>True</label><select class="le-flow-onpass">${leSkFlowNodeIdOptionsHtml(emit0.on_pass || "")}</select></div>
+        <div class="le-flow-emit-gate" style="display:none"><label>False</label><select class="le-flow-onfail">${leSkFlowNodeIdOptionsHtml(emit0.on_fail || "")}</select></div>
+        <div class="le-flow-emit-onhit" style="display:none"><label>When Attack Hits</label><select class="le-flow-hit-per">${leSkFlowNodeIdOptionsHtml(emit0.on_hit && emit0.on_hit.per_target ? emit0.on_hit.per_target : "")}</select></div>
+        <div class="le-flow-emit-onhit" style="display:none"><label>First Hit</label><select class="le-flow-hit-first">${leSkFlowNodeIdOptionsHtml(emit0.on_hit && emit0.on_hit.first_only ? emit0.on_hit.first_only : "")}</select></div>
+        <div class="le-flow-emit-ontick" style="display:none"><label>Every Tick</label><select class="le-flow-ontick">${leSkFlowNodeIdOptionsHtml(emit0.on_tick || "")}</select></div>
+        <div class="le-flow-emit-onexpire" style="display:none"><label>Duration Ends</label><select class="le-flow-onexpire">${leSkFlowNodeIdOptionsHtml(emit0.on_expire || "")}</select></div>
+        <div class="le-flow-emit-onattacked" style="display:none"><label>When Attacked</label><select class="le-flow-onattacked">${leSkFlowNodeIdOptionsHtml(emit0.on_attacked || "")}</select></div>
+        <div class="le-flow-emit-ondeath" style="display:none"><label>Summon Dies</label><select class="le-flow-ondeath">${leSkFlowNodeIdOptionsHtml(emit0.on_death || "")}</select></div>
+        <div class="le-flow-emit-zone" style="display:none"><label>Enters Zone</label><select class="le-flow-onenter">${leSkFlowNodeIdOptionsHtml(emit0.on_enter || "")}</select></div>
+        <div class="le-flow-emit-zone" style="display:none"><label>Leaves Zone</label><select class="le-flow-onexit">${leSkFlowNodeIdOptionsHtml(emit0.on_exit || "")}</select></div>
+      </div>
+    </details>
   `;
   wrap.appendChild(node);
 
@@ -9755,7 +9951,10 @@ function addLeSkFlowNode(kindPref, pref) {
     const ports = typeof leSkFlowPortsForKind === "function" ? leSkFlowPortsForKind(k) : ["next"];
     node.querySelectorAll(".le-flow-emit-onstop").forEach((el) => { el.style.display = ports.includes("on_stop") ? "" : "none"; });
     node.querySelectorAll(".le-flow-emit-onhit").forEach((el) => { el.style.display = ports.includes("per_target") ? "" : "none"; });
-    node.querySelectorAll(".le-flow-emit-life").forEach((el) => { el.style.display = ports.includes("on_expire") ? "" : "none"; });
+    node.querySelectorAll(".le-flow-emit-ontick").forEach((el) => { el.style.display = ports.includes("on_tick") ? "" : "none"; });
+    node.querySelectorAll(".le-flow-emit-onexpire").forEach((el) => { el.style.display = ports.includes("on_expire") ? "" : "none"; });
+    node.querySelectorAll(".le-flow-emit-onattacked").forEach((el) => { el.style.display = ports.includes("on_attacked") ? "" : "none"; });
+    node.querySelectorAll(".le-flow-emit-ondeath").forEach((el) => { el.style.display = ports.includes("on_death") ? "" : "none"; });
     node.querySelectorAll(".le-flow-emit-zone").forEach((el) => { el.style.display = ports.includes("on_enter") ? "" : "none"; });
     node.querySelectorAll(".le-flow-emit-gate").forEach((el) => { el.style.display = ports.includes("on_pass") ? "" : "none"; });
   };
@@ -9763,7 +9962,10 @@ function addLeSkFlowNode(kindPref, pref) {
 
   node.querySelector(".le-flow-kind")?.addEventListener("change", () => {
     syncEmitVisibility();
-    renderLeSkFlowNodeFields(node, node.querySelector(".le-flow-kind")?.value, {});
+    const k = node.querySelector(".le-flow-kind")?.value;
+    const title = node.querySelector(".le-flow-card-title");
+    if (title) title.textContent = LE_SK_FLOW_KIND_SHORT[k] || k || "Node";
+    renderLeSkFlowNodeFields(node, k, {});
     updateLeSkCompileWarn();
     leSkFlowRefreshGraph();
   });
@@ -9790,6 +9992,10 @@ function addLeSkFlowNode(kindPref, pref) {
     leSkFlowRefreshGraph();
   }));
   node.querySelector(".le-flow-remove")?.addEventListener("click", () => {
+    if (leSkFlowIsCastNode(node) && leSkFlowCastNodes().length <= 1) {
+      leSkFlowSetLinkHint("Keep one When Skill Cast. Costs stay in Skill Settings.");
+      return;
+    }
     const wrap = document.getElementById("le_sk_flow_nodes");
     const nextSel = node.nextElementSibling?.classList.contains("le-flow-node")
       ? node.nextElementSibling
@@ -9846,6 +10052,7 @@ function addLeSkFlowNode(kindPref, pref) {
     }
     if (typeof window.leBuilderSession?.note === "function") window.leBuilderSession.note({ immediate: true });
   }
+  return node;
 }
 
 function refreshLeSkFlowEdgeSelects() {
@@ -9863,6 +10070,7 @@ function refreshLeSkFlowEdgeSelects() {
     const curFail = String(node.querySelector(".le-flow-onfail")?.value || "").trim();
     const curEnter = String(node.querySelector(".le-flow-onenter")?.value || "").trim();
     const curExit = String(node.querySelector(".le-flow-onexit")?.value || "").trim();
+    const curDeath = String(node.querySelector(".le-flow-ondeath")?.value || "").trim();
     const nextSel = node.querySelector(".le-flow-next");
     const stopSel = node.querySelector(".le-flow-onstop");
     const perSel = node.querySelector(".le-flow-hit-per");
@@ -9874,6 +10082,7 @@ function refreshLeSkFlowEdgeSelects() {
     const failSel = node.querySelector(".le-flow-onfail");
     const enterSel = node.querySelector(".le-flow-onenter");
     const exitSel = node.querySelector(".le-flow-onexit");
+    const deathSel = node.querySelector(".le-flow-ondeath");
     if (nextSel) nextSel.innerHTML = leSkFlowNodeIdOptionsHtml(curNext);
     if (stopSel) stopSel.innerHTML = leSkFlowNodeIdOptionsHtml(curStop);
     if (perSel) perSel.innerHTML = leSkFlowNodeIdOptionsHtml(curPer);
@@ -9885,6 +10094,7 @@ function refreshLeSkFlowEdgeSelects() {
     if (failSel) failSel.innerHTML = leSkFlowNodeIdOptionsHtml(curFail);
     if (enterSel) enterSel.innerHTML = leSkFlowNodeIdOptionsHtml(curEnter);
     if (exitSel) exitSel.innerHTML = leSkFlowNodeIdOptionsHtml(curExit);
+    if (deathSel) deathSel.innerHTML = leSkFlowNodeIdOptionsHtml(curDeath);
     node.querySelectorAll(".le-flow-roll-node, .le-flow-roll-def, .le-flow-wchoice-node, .le-flow-seq-node, .le-flow-repeat-body").forEach((el) => {
       const cur = String(el.value || "").trim();
       el.innerHTML = leSkFlowNodeIdOptionsHtml(cur);
@@ -9901,8 +10111,9 @@ function buildSkillFlowDocLe() {
   const nodesArr = [...wrap.querySelectorAll(":scope > .le-flow-node")];
   if (!nodesArr.length) throw new Error("Add at least one flow node.");
   const nodes = {};
-  const entry = String(nodesArr[0].querySelector(".le-flow-id")?.value || "").trim();
-  if (!entry) throw new Error("First node needs an id.");
+  const castEl = typeof leSkFlowIsCastNode === "function" ? nodesArr.find(leSkFlowIsCastNode) : nodesArr[0];
+  const entry = String((castEl || nodesArr[0]).querySelector(".le-flow-id")?.value || "").trim();
+  if (!entry) throw new Error("When Skill Cast needs an id.");
 
   for (const nodeEl of nodesArr) {
     const id = String(nodeEl.querySelector(".le-flow-id")?.value || "").trim();
@@ -9963,7 +10174,17 @@ function buildSkillFlowDocLe() {
       const dr = Number(nodeEl.querySelector(".le-flow-del-r")?.value);
       if (Number.isFinite(dr) && dr > 0) params.radius = dr;
       const ddur = Number(nodeEl.querySelector(".le-flow-del-dur")?.value);
-      if (Number.isFinite(ddur) && ddur > 0) params.duration_seconds = ddur;
+      if (Number.isFinite(ddur) && ddur > 0) {
+        params.duration_seconds = ddur;
+        params.max_life_seconds = ddur;
+      }
+      const darm = Number(nodeEl.querySelector(".le-flow-del-arm")?.value);
+      if (Number.isFinite(darm) && darm > 0) {
+        params.arm_delay_seconds = darm;
+        params.arm_delay_ticks = Math.max(0, Math.round(darm * 20));
+      }
+      const dtrig = Number(nodeEl.querySelector(".le-flow-del-trig")?.value);
+      if (Number.isFinite(dtrig) && dtrig > 0) params.max_triggers = Math.max(0, Math.trunc(dtrig));
       const dtick = Number(nodeEl.querySelector(".le-flow-del-tick")?.value);
       if (Number.isFinite(dtick) && dtick > 0) {
         params.tick_interval_seconds = dtick;
@@ -10195,6 +10416,10 @@ function buildSkillFlowDocLe() {
       } else if (cond === "resource") {
         params.resource = String(nodeEl.querySelector(".le-flow-res-id")?.value || "mana").trim() || "mana";
         params.amount = Math.max(0, Number(nodeEl.querySelector(".le-flow-res-amt")?.value) || 0);
+      } else if (cond === "target_hp") {
+        params.left = "target:hp_pct";
+        params.op = String(nodeEl.querySelector(".le-flow-hp-op")?.value || "gte").trim() || "gte";
+        params.right = String(nodeEl.querySelector(".le-flow-hp-right")?.value || "").trim() || "0.5";
       }
       if (nodeEl.querySelector(".le-flow-if-not")?.checked) params.not = true;
     } else if (kind === "sequence") {
@@ -10403,8 +10628,14 @@ function buildSkillFlowDocLe() {
     if (onAttacked) emit.on_attacked = onAttacked;
     if (onEnter) emit.on_enter = onEnter;
     if (onExit) emit.on_exit = onExit;
+    const onDeath = String(nodeEl.querySelector(".le-flow-ondeath")?.value || "").trim();
+    if (onDeath) emit.on_death = onDeath;
 
-    nodes[id] = { kind, params, ...(Object.keys(emit).length ? { emit } : {}) };
+    const rec = { kind, params, ...(Object.keys(emit).length ? { emit } : {}) };
+    const gx = Number(nodeEl.dataset.gx);
+    const gy = Number(nodeEl.dataset.gy);
+    if (Number.isFinite(gx) && Number.isFinite(gy)) rec.layout = { x: Math.round(gx), y: Math.round(gy) };
+    nodes[id] = rec;
   }
 
   const execution = { type: "flow", entry, nodes };
@@ -10913,14 +11144,22 @@ function importSkillActionFromDocLe(doc) {
       if (rootFx && (kind === "projectile" || kind === "ground") && !params.particles) {
         params.particles = { ...rootFx };
       }
-      addLeSkFlowNode(kind || "movement", { id, kind, params, emit });
+      const added = addLeSkFlowNode(kind || "movement", { id, kind, params, emit });
+      const lay = n.layout && typeof n.layout === "object" ? n.layout : null;
+      if (added && lay && Number.isFinite(Number(lay.x)) && Number.isFinite(Number(lay.y))) {
+        added.dataset.gx = String(Math.round(Number(lay.x)));
+        added.dataset.gy = String(Math.round(Number(lay.y)));
+      }
     }
     LE_SK_FLOW.batch = false;
     refreshLeSkFlowEdgeSelects();
     leSkSyncTriggerEffectLevelsToSkillRank();
     updateLeSkCompileWarn();
     leSkFlowEnsureGraph();
-    leSkFlowAutoLayout();
+    const wrapNow = document.getElementById("le_sk_flow_nodes");
+    const hasLayout = wrapNow && [...wrapNow.querySelectorAll(":scope > .le-flow-node")].some((el) => el.dataset.gx != null);
+    if (hasLayout) leSkFlowRefreshGraph();
+    else leSkFlowAutoLayout();
     const firstN = document.querySelector("#le_sk_flow_nodes > .le-flow-node");
     if (firstN) leSkFlowSelectNode(firstN);
     return;
@@ -12692,10 +12931,10 @@ function importSkillActionFromDocLe(doc) {
   </script>
   <script src="le-particle-sprites.js?v=5"></script>
   <script src="le-particle-studio.js?v=29"></script>
-  <script src="le-skill-studio.js?v=18"></script>
+  <script src="le-skill-studio.js?v=21"></script>
   <script src="le-pack-studio.js?v=3"></script>
-  <script src="le-graph-validate.js?v=3"></script>
-  <script src="le-builder-session.js?v=1"></script>
+  <script src="le-graph-validate.js?v=5"></script>
+  <script src="le-builder-session.js?v=2"></script>
 </body>
 </html>
 

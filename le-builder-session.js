@@ -399,6 +399,9 @@
     $("le_sk_btn_check")?.addEventListener("click", () => {
       if (typeof window.leGraphValidatePaint === "function") window.leGraphValidatePaint(true);
     });
+    $("le_sk_btn_trace")?.addEventListener("click", () => {
+      if (typeof window.leGraphTrace === "function") window.leGraphTrace();
+    });
     $("le_session_draft_restore")?.addEventListener("click", () => restoreDraft());
     $("le_session_draft_dismiss")?.addEventListener("click", () => dismissDraft());
     document.addEventListener("keydown", onKey);
